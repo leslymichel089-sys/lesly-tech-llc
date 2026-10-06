@@ -97,7 +97,7 @@ app.use((req, res, next) => {
   res.locals.siteUrl = SITE_URL;
   res.locals.descFor = descFor;
   res.locals.isAdmin = !!req.session.admin;
-  res.locals.contactEmail = process.env.CONTACT_EMAIL || 'contact@leslytechllc.com';
+  res.locals.contactEmail = process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com';
   res.locals.currentPath = req.path;
   next();
 });
