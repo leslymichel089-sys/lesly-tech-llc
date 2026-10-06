@@ -215,6 +215,25 @@ app.post('/admin/logout', requireLogin, (req, res) => {
   res.redirect('/');
 });
 
+app.get('/admin/change-code', requireLogin, (req, res) => {
+  res.render('admin/change_code', { page: 'admin', error: null, changed: false });
+});
+
+app.post('/admin/change-code', requireLogin, (req, res) => {
+  const current = String(req.body.current_code || '').trim();
+  const code = String(req.body.code || '').trim();
+  const confirm = String(req.body.confirm || '').trim();
+  const hash = dbm.getSetting('admin_code_hash');
+  const renderError = (error) => res.render('admin/change_code', { page: 'admin', error, changed: false });
+
+  if (!bcrypt.compareSync(current, hash)) return renderError('Code actuel incorrect.');
+  if (!/^\d{4}$/.test(code)) return renderError('Le nouveau code doit contenir exactement 4 chiffres.');
+  if (code !== confirm) return renderError('Les deux nouveaux codes ne correspondent pas.');
+
+  dbm.setSetting('admin_code_hash', bcrypt.hashSync(code, 10));
+  res.render('admin/change_code', { page: 'admin', error: null, changed: true });
+});
+
 app.post('/admin/toggle-site', requireLogin, (req, res) => {
   const enabled = dbm.getSetting('site_enabled') !== '0';
   dbm.setSetting('site_enabled', enabled ? '0' : '1');
