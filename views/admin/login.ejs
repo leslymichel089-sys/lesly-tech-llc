@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+
+<section class="auth">
+  <h1><%= t('admin_login_title') %></h1>
+  <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+  <form method="post" action="/admin/login" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label><%= t('admin_login_code') %>
+      <input type="password" name="code" required autocomplete="current-password">
+    </label>
+    <button class="btn" type="submit"><%= t('admin_login_submit') %></button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

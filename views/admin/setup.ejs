@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+
+<section class="auth">
+  <h1><%= t('admin_setup_title') %></h1>
+  <p><%= t('admin_setup_text') %></p>
+  <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+  <form method="post" action="/admin/setup" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label><%= t('admin_setup_code') %>
+      <input type="password" name="code" required minlength="6" autocomplete="new-password">
+    </label>
+    <label><%= t('admin_setup_confirm') %>
+      <input type="password" name="confirm" required minlength="6" autocomplete="new-password">
+    </label>
+    <p class="muted small"><%= t('admin_setup_hint') %></p>
+    <button class="btn" type="submit"><%= t('admin_setup_submit') %></button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

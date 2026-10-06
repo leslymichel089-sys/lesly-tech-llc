@@ -1,0 +1,190 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <h1><%= t('notif_title') %></h1>
+  <p class="muted"><%= t('notif_sub') %></p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin"><%= t('admin_dash_title') %></a>
+  </div>
+</section>
+
+<% if (saved) { %><p class="alert alert-ok"><%= t('notif_saved') %></p><% } %>
+
+<% if (testResult) { %>
+  <% if (testResult.reason === 'no_channel') { %>
+    <p class="alert alert-warn"><%= t('notif_test_none') %></p>
+  <% } else if (testResult.ok) { %>
+    <p class="alert alert-ok"><%= t('notif_test_ok') %> (<%= testResult.results.map(function(r){ return t('notif_ch_' + r.channel); }).join(', ') %>)</p>
+  <% } else { %>
+    <p class="alert alert-error"><%= t('notif_test_partial') %></p>
+    <ul class="mini-list">
+      <% testResult.results.forEach(function(r){ %>
+        <li><%= t('notif_ch_' + r.channel) %> — <%= r.ok ? '✓ ' + r.detail : '✗ ' + r.detail %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+<% } %>
+
+<section class="dash-panel">
+  <h2><%= t('notif_channels_title') %></h2>
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead><tr><th><%= t('notif_channel') %></th><th><%= t('notif_status') %></th><th></th></tr></thead>
+      <tbody>
+        <% channels.forEach(function(c){ %>
+          <tr>
+            <td><strong><%= t('notif_ch_' + c.channel) %></strong><% if (c.mode) { %> <span class="muted small">(<%= t('notif_mode_' + c.mode) %>)</span><% } %></td>
+            <td>
+              <% if (!c.configured) { %>
+                <span class="status-badge off"><%= t('notif_not_configured') %></span>
+              <% } else if (c.channel === 'windows' && c.windowsOnly) { %>
+                <span class="status-badge warn"><%= t('notif_windows_only') %></span>
+              <% } else { %>
+                <span class="status-badge on"><%= c.source === 'env' ? t('notif_configured_env') : t('notif_configured_admin') %></span>
+              <% } %>
+            </td>
+            <td class="muted small">
+              <% if (c.channel === 'windows') { %><%= t('notif_windows_note') %><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('notif_test_title') %></h2>
+  <form method="post" action="/admin/notifications/test" class="inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit"><%= t('notif_test_button') %></button>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('notif_alerts_title') %></h2>
+  <form method="post" action="/admin/notifications/settings" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% alerts.forEach(function(a){ %>
+      <label class="check-row">
+        <input type="checkbox" name="alert_<%= a.type %>" <%= a.enabled ? 'checked' : '' %>>
+        <span><%= t('notif_alert_' + a.type) %></span>
+      </label>
+    <% }) %>
+    <label><%= t('notif_threshold_label') %>
+      <input type="number" name="visits_spike_threshold" min="0" value="<%= threshold %>" style="max-width:160px">
+    </label>
+    <div><button class="btn" type="submit"><%= t('notif_save') %></button></div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('notif_cred_title') %></h2>
+  <p class="muted small"><%= t('notif_cred_note') %></p>
+  <form method="post" action="/admin/notifications/credentials" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <fieldset class="cred-group">
+      <legend><%= t('notif_smtp_title') %> — <%= t('notif_ch_email') %></legend>
+      <div class="form-row">
+        <label><%= t('notif_smtp_host') %> <%- include('cred_badge', { src: credSrc.smtp_host, t: t }) %>
+          <input type="text" name="smtp_host" value="<%= creds.smtp_host %>" placeholder="smtp.gmail.com"></label>
+        <label><%= t('notif_smtp_port') %> <%- include('cred_badge', { src: credSrc.smtp_port, t: t }) %>
+          <input type="text" name="smtp_port" value="<%= creds.smtp_port %>" placeholder="587"></label>
+        <label class="check-row"><%= t('notif_smtp_secure') %> <%- include('cred_badge', { src: credSrc.smtp_secure, t: t }) %>
+          <input type="checkbox" name="smtp_secure" <%= smtp_secure ? 'checked' : '' %>></label>
+      </div>
+      <div class="form-row">
+        <label><%= t('notif_smtp_user') %> <%- include('cred_badge', { src: credSrc.smtp_user, t: t }) %>
+          <input type="text" name="smtp_user" value="<%= creds.smtp_user %>" autocomplete="off"></label>
+        <label><%= t('notif_smtp_pass') %> <%- include('cred_badge', { src: credSrc.smtp_pass, t: t }) %>
+          <input type="password" name="smtp_pass" value="<%= creds.smtp_pass %>" autocomplete="new-password"></label>
+      </div>
+      <div class="form-row">
+        <label><%= t('notif_smtp_from') %> <%- include('cred_badge', { src: credSrc.smtp_from, t: t }) %>
+          <input type="text" name="smtp_from" value="<%= creds.smtp_from %>"></label>
+        <label><%= t('notif_email_to') %> <%- include('cred_badge', { src: credSrc.email_to, t: t }) %>
+          <input type="text" name="email_to" value="<%= creds.email_to %>"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend><%= t('notif_telegram_title') %> — <%= t('notif_ch_telegram') %></legend>
+      <div class="form-row">
+        <label><%= t('notif_telegram_token') %> <%- include('cred_badge', { src: credSrc.telegram_token, t: t }) %>
+          <input type="password" name="telegram_token" value="<%= creds.telegram_token %>" autocomplete="new-password"></label>
+        <label><%= t('notif_telegram_chat') %> <%- include('cred_badge', { src: credSrc.telegram_chat, t: t }) %>
+          <input type="text" name="telegram_chat" value="<%= creds.telegram_chat %>" autocomplete="off"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend><%= t('notif_whatsapp_title') %> — <%= t('notif_ch_whatsapp') %></legend>
+      <label><%= t('notif_whatsapp_mode') %> <%- include('cred_badge', { src: credSrc.whatsapp_mode, t: t }) %>
+        <select name="whatsapp_mode">
+          <option value="callmebot" <%= whatsapp_mode === 'callmebot' ? 'selected' : '' %>><%= t('notif_mode_callmebot') %></option>
+          <option value="twilio" <%= whatsapp_mode === 'twilio' ? 'selected' : '' %>><%= t('notif_mode_twilio') %></option>
+        </select></label>
+      <div class="form-row">
+        <label><%= t('notif_callmebot_key') %> <%- include('cred_badge', { src: credSrc.callmebot_key, t: t }) %>
+          <input type="password" name="callmebot_key" value="<%= creds.callmebot_key %>" autocomplete="new-password"></label>
+        <label><%= t('notif_whatsapp_phone') %> <%- include('cred_badge', { src: credSrc.whatsapp_phone, t: t }) %>
+          <input type="text" name="whatsapp_phone" value="<%= creds.whatsapp_phone %>" placeholder="+509..." autocomplete="off"></label>
+      </div>
+      <div class="form-row">
+        <label><%= t('notif_twilio_sid') %> <%- include('cred_badge', { src: credSrc.twilio_sid, t: t }) %>
+          <input type="text" name="twilio_sid" value="<%= creds.twilio_sid %>" autocomplete="off"></label>
+        <label><%= t('notif_twilio_token') %> <%- include('cred_badge', { src: credSrc.twilio_token, t: t }) %>
+          <input type="password" name="twilio_token" value="<%= creds.twilio_token %>" autocomplete="new-password"></label>
+      </div>
+      <div class="form-row">
+        <label><%= t('notif_twilio_from') %> <%- include('cred_badge', { src: credSrc.twilio_from, t: t }) %>
+          <input type="text" name="twilio_from" value="<%= creds.twilio_from %>" placeholder="whatsapp:+1415..." autocomplete="off"></label>
+        <label><%= t('notif_whatsapp_to') %> <%- include('cred_badge', { src: credSrc.whatsapp_to, t: t }) %>
+          <input type="text" name="whatsapp_to" value="<%= creds.whatsapp_to %>" placeholder="whatsapp:+509..." autocomplete="off"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend><%= t('notif_windows_title') %> — <%= t('notif_ch_windows') %></legend>
+      <label class="check-row">
+        <input type="checkbox" name="windows" <%= windows_on ? 'checked' : '' %>>
+        <span><%= t('notif_windows_enable') %> <%- include('cred_badge', { src: credSrc.windows, t: t }) %></span>
+      </label>
+      <p class="muted small"><%= t('notif_windows_note') %></p>
+    </fieldset>
+
+    <p class="muted small"><%= t('notif_keep_empty') %></p>
+    <div><button class="btn" type="submit"><%= t('notif_save') %></button></div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('notif_log_title') %></h2>
+  <% if (!log.length) { %>
+    <p class="muted"><%= t('notif_log_empty') %></p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th><%= t('notif_log_time') %></th><th><%= t('notif_log_type') %></th><th><%= t('notif_log_result') %></th></tr></thead>
+        <tbody>
+          <% log.forEach(function(e){ %>
+            <tr>
+              <td class="nowrap"><%= e.created_at %></td>
+              <td><strong><%= e.type %></strong><br><span class="muted small"><%= e.title %></span></td>
+              <td>
+                <% if (!e.channels.length) { %><span class="muted">—</span><% } %>
+                <% e.channels.forEach(function(c){ %>
+                  <span class="tag <%= c.ok ? 'tag-ok' : 'tag-off' %>"><%= c.channel %></span>
+                  <span class="muted small"><%= c.detail %></span><br>
+                <% }) %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

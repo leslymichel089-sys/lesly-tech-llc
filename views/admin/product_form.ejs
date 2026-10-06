@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <h1><%= product ? t('admin_form_title_edit') : t('admin_form_title_new') %></h1>
+</section>
+
+<form method="post" action="<%= product ? '/admin/products/' + product.id : '/admin/products' %>"
+      enctype="multipart/form-data" class="form form-wide">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <label><%= t('f_title') %>
+    <input type="text" name="title" required value="<%= product ? product.title : '' %>">
+  </label>
+
+  <div class="form-row">
+    <label><%= t('f_type') %>
+      <select name="type">
+        <option value="app" <%= product && product.type === 'app' ? 'selected' : '' %>><%= t('type_app') %></option>
+        <option value="ebook" <%= product && product.type === 'ebook' ? 'selected' : (!product ? 'selected' : '') %>><%= t('type_ebook') %></option>
+        <option value="autre" <%= product && product.type === 'autre' ? 'selected' : '' %>><%= t('type_autre') %></option>
+      </select>
+    </label>
+    <label><%= t('f_version') %>
+      <input type="text" name="version" value="<%= product ? product.version : '1.0' %>">
+    </label>
+    <label class="check"><%= t('f_active') %>
+      <input type="checkbox" name="active" <%= !product || product.active ? 'checked' : '' %>>
+    </label>
+  </div>
+
+  <label><%= t('f_desc_fr') %>
+    <textarea name="desc_fr" id="desc-fr" rows="3"><%= product ? product.desc_fr : '' %></textarea>
+  </label>
+  <label><%= t('f_desc_en') %>
+    <textarea name="desc_en" id="desc-en" rows="3"><%= product ? product.desc_en : '' %></textarea>
+  </label>
+  <label><%= t('f_desc_ht') %>
+    <textarea name="desc_ht" id="desc-ht" rows="3"><%= product ? product.desc_ht : '' %></textarea>
+  </label>
+  <label><%= t('f_desc_es') %>
+    <textarea name="desc_es" id="desc-es" rows="3"><%= product ? product.desc_es : '' %></textarea>
+  </label>
+
+  <fieldset class="ai-box">
+    <legend><%= t('f_ai_title') %></legend>
+    <div class="form-row">
+      <label><%= t('f_ai_prompt_label') %>
+        <input type="text" id="ai-prompt" value="<%= product ? product.title : '' %>">
+      </label>
+      <label><%= t('f_ai_lang_label') %>
+        <select id="ai-lang">
+          <option value="fr">FR</option><option value="en">EN</option>
+          <option value="ht">HT</option><option value="es">ES</option>
+        </select>
+      </label>
+    </div>
+    <button type="button" class="btn btn-small" id="ai-generate"
+            data-csrf="<%= csrfToken %>" data-working="<%= t('f_ai_working') %>"
+            data-errprefix="<%= t('f_ai_error_prefix') %>"><%= t('f_ai_button') %></button>
+    <p class="muted small" id="ai-status"></p>
+  </fieldset>
+
+  <label><%= t('f_image') %>
+    <% if (product && product.image) { %>
+      <span class="muted small"><%= t('f_image_current') %> : <a href="<%= product.image %>" target="_blank"><%= product.image %></a></span>
+    <% } %>
+    <input type="file" name="image" accept="image/*">
+  </label>
+
+  <label><%= t('f_links') %>
+    <textarea name="links" rows="4"><%= linksText %></textarea>
+    <span class="muted small"><%= t('f_links_hint') %></span>
+  </label>
+
+  <div class="form-actions">
+    <button class="btn" type="submit"><%= product ? t('f_submit_edit') : t('f_submit_new') %></button>
+    <a class="btn btn-ghost" href="/admin"><%= t('f_cancel') %></a>
+  </div>
+</form>
+
+<%- include('../partials/footer') %>

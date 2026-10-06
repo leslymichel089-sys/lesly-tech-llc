@@ -1,0 +1,241 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <h1><%= t('admin_dash_title') %></h1>
+  <div class="dash-actions">
+    <a class="btn btn-small" href="/"><%= t('admin_back_site') %></a>
+    <form method="post" action="/admin/logout" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-small btn-ghost" type="submit"><%= t('admin_logout') %></button>
+    </form>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <div class="status-row">
+    <span class="status-badge <%= enabled ? 'on' : 'off' %>">
+      <%= enabled ? t('admin_status_online') : t('admin_status_offline') %>
+    </span>
+    <form method="post" action="/admin/toggle-site" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn <%= enabled ? 'btn-danger' : 'btn-ok' %>" type="submit">
+        <%= enabled ? t('admin_disable') : t('admin_enable') %>
+      </button>
+    </form>
+    <button class="btn" id="share-btn" data-url="<%= siteUrl %>" data-copied="<%= t('admin_share_copied') %>">
+      <%= t('admin_share') %>
+    </button>
+    <a class="btn btn-ghost" href="/admin/notifications"><%= t('notif_nav') %></a>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('admin_stats_title') %></h2>
+  <div class="stats-grid">
+    <div class="stat"><span class="stat-num" id="stat-visits"><%= stats.visitsTotal %></span><span class="stat-label"><%= t('admin_stat_visitors') %></span></div>
+    <div class="stat"><span class="stat-num" id="stat-products"><%= stats.productsCount %></span><span class="stat-label"><%= t('admin_stat_products') %></span></div>
+    <div class="stat"><span class="stat-num" id="stat-clicks"><%= stats.clicksTotal %></span><span class="stat-label"><%= t('admin_stat_clicks') %></span></div>
+  </div>
+  <p class="muted small"><%= t('admin_clicks_note') %></p>
+  <div class="stats-detail">
+    <div>
+      <h3><%= t('admin_clicks_detail_title') %></h3>
+      <ul class="mini-list">
+        <% stats.clicksByLink.forEach(function(c){ %>
+          <li><strong><%= c.n %></strong> — <%= c.title || ('#' + c.product_id) %> · <%= c.label %></li>
+        <% }) %>
+      </ul>
+    </div>
+    <div>
+      <h3><%= t('admin_visits_detail_title') %></h3>
+      <ul class="mini-list">
+        <% stats.visitsDays.forEach(function(v){ %>
+          <li><strong><%= v.count %></strong> — <%= v.day %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="dash-panel live-panel">
+  <div class="section-head">
+    <h2><%= t('admin_panel_live_title') %></h2>
+    <span class="live-badge"><span class="live-dot" aria-hidden="true"></span><%= t('admin_live') %></span>
+  </div>
+  <p class="muted small" id="live-updated"><%= t('admin_live_updated') %></p>
+  <div class="live-grid">
+    <div class="live-chart">
+      <h3><%= t('admin_chart_visits') %></h3>
+      <svg id="chart-visits" viewBox="0 0 560 220" role="img" aria-label="<%= t('admin_chart_visits') %>"></svg>
+    </div>
+    <div class="live-chart">
+      <h3><%= t('admin_chart_clicks') %></h3>
+      <svg id="chart-clicks" viewBox="0 0 560 220" role="img" aria-label="<%= t('admin_chart_clicks') %>"></svg>
+    </div>
+  </div>
+  <h3><%= t('admin_activity_title') %></h3>
+  <ul class="activity-feed" id="activity-feed">
+    <li class="muted"><%= t('admin_activity_empty') %></li>
+  </ul>
+</section>
+
+<script>
+(function () {
+  'use strict';
+  var STR = {
+    visit: <%= JSON.stringify(t('admin_activity_visit')) %>,
+    click: <%= JSON.stringify(t('admin_activity_click')) %>,
+    empty: <%= JSON.stringify(t('admin_activity_empty')) %>,
+    updated: <%= JSON.stringify(t('admin_live_updated')) %>,
+    error: <%= JSON.stringify(t('admin_live_error')) %>
+  };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function text(parent, x, y, s, attrs) {
+    var n = el('text', Object.assign({ x: x, y: y, 'font-size': 11, fill: 'var(--text-soft)' }, attrs || {}));
+    n.textContent = s;
+    parent.appendChild(n);
+    return n;
+  }
+
+  // Barres verticales : visites par jour (14 derniers jours).
+  function drawVisits(svg, days) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var W = 560, H = 220, padL = 8, padB = 28, padT = 14;
+    var max = 1;
+    days.forEach(function (d) { if (d.count > max) max = d.count; });
+    var n = Math.max(days.length, 1);
+    var slot = (W - padL * 2) / n;
+    var bw = Math.min(slot * 0.62, 30);
+    days.forEach(function (d, i) {
+      var h = Math.max(3, (H - padB - padT) * d.count / max);
+      var x = padL + slot * i + (slot - bw) / 2;
+      var y = H - padB - h;
+      var r = el('rect', { x: x.toFixed(1), y: y.toFixed(1), width: bw.toFixed(1), height: h.toFixed(1), rx: 4, fill: 'var(--accent)' });
+      var title = el('title', {}); title.textContent = d.day + ' : ' + d.count;
+      r.appendChild(title);
+      svg.appendChild(r);
+      text(svg, (x + bw / 2).toFixed(1), H - 8, d.day.slice(5), { 'text-anchor': 'middle' });
+      if (d.count > 0) text(svg, (x + bw / 2).toFixed(1), (y - 5).toFixed(1), String(d.count), { 'text-anchor': 'middle', 'font-weight': 'bold' });
+    });
+  }
+
+  // Barres horizontales : clics groupés par produit (top 8).
+  function drawClicks(svg, rows) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var W = 560, H = 220, padL = 170, padR = 40, padT = 10, rowH = 26;
+    var byProduct = {};
+    rows.forEach(function (r) {
+      var name = r.title || ('#' + r.product_id);
+      byProduct[name] = (byProduct[name] || 0) + Number(r.n || 0);
+    });
+    var items = Object.keys(byProduct).map(function (k) { return { name: k, n: byProduct[k] }; })
+      .sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
+    if (!items.length) { text(svg, 10, 30, STR.empty); return; }
+    var max = items[0].n || 1;
+    items.forEach(function (it, i) {
+      var y = padT + i * rowH;
+      var w = Math.max(4, (W - padL - padR) * it.n / max);
+      text(svg, padL - 8, y + 15, it.name.length > 24 ? it.name.slice(0, 23) + '…' : it.name, { 'text-anchor': 'end' });
+      var r = el('rect', { x: padL, y: y + 3, width: w.toFixed(1), height: 16, rx: 4, fill: 'var(--accent-2)' });
+      var title = el('title', {}); title.textContent = it.name + ' : ' + it.n;
+      r.appendChild(title);
+      svg.appendChild(r);
+      text(svg, padL + w + 6, y + 15, String(it.n), { 'font-weight': 'bold' });
+    });
+  }
+
+  function drawActivity(ul, items) {
+    ul.innerHTML = '';
+    if (!items.length) {
+      var li = document.createElement('li'); li.className = 'muted'; li.textContent = STR.empty;
+      ul.appendChild(li); return;
+    }
+    items.forEach(function (e) {
+      var li = document.createElement('li');
+      var badge = document.createElement('span');
+      badge.className = 'act-badge ' + (e.kind === 'click' ? 'act-click' : 'act-visit');
+      badge.textContent = e.kind === 'click' ? STR.click : STR.visit;
+      var detail = document.createElement('span');
+      detail.textContent = e.detail || '';
+      var time = document.createElement('time');
+      time.className = 'muted small';
+      time.textContent = (e.day ? e.day.slice(5) + ' ' : '') + (e.hour || '');
+      li.appendChild(badge); li.appendChild(detail); li.appendChild(time);
+      ul.appendChild(li);
+    });
+  }
+
+  function refresh() {
+    fetch('/admin/api/stats', { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) {
+        document.getElementById('stat-visits').textContent = d.visitsTotal;
+        document.getElementById('stat-products').textContent = d.productsCount;
+        document.getElementById('stat-clicks').textContent = d.clicksTotal;
+        drawVisits(document.getElementById('chart-visits'), d.visitsDays || []);
+        drawClicks(document.getElementById('chart-clicks'), d.clicksByLink || []);
+        drawActivity(document.getElementById('activity-feed'), d.recentActivity || []);
+        document.getElementById('live-updated').textContent = STR.updated + ' — ' + new Date().toLocaleTimeString();
+      })
+      .catch(function () {
+        document.getElementById('live-updated').textContent = STR.error;
+      });
+  }
+
+  refresh();
+  setInterval(refresh, 15000);
+})();
+</script>
+
+<section class="dash-panel">
+  <div class="section-head">
+    <h2><%= t('admin_products_title') %></h2>
+    <a class="btn" href="/admin/products/new">+ <%= t('admin_add_product') %></a>
+  </div>
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>ID</th><th><%= t('f_title') %></th><th><%= t('f_type') %></th><th><%= t('f_version') %></th><th><%= t('admin_status_active') %>/<%= t('admin_status_inactive') %></th><th><%= t('badge_update') %></th><th></th></tr></thead>
+      <tbody>
+        <% products.forEach(function(p){ %>
+          <tr class="<%= p.active ? '' : 'row-off' %>">
+            <td><%= p.id %></td>
+            <td><a href="/produit/<%= p.id %>"><%= p.title %></a></td>
+            <td><%= t('type_' + (p.type === 'app' ? 'app' : p.type === 'ebook' ? 'ebook' : 'autre')) %></td>
+            <td><%= p.version %></td>
+            <td>
+              <form method="post" action="/admin/products/<%= p.id %>/toggle-active" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-small <%= p.active ? 'btn-ghost' : 'btn-ok' %>" type="submit">
+                  <%= p.active ? t('admin_deactivate') : t('admin_activate') %>
+                </button>
+              </form>
+            </td>
+            <td>
+              <form method="post" action="/admin/products/<%= p.id %>/toggle-update" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-small <%= p.update_available ? 'btn-ghost' : '' %>" type="submit">
+                  <%= p.update_available ? '✓ ' + t('admin_toggle_update_off') : t('admin_toggle_update_on') %>
+                </button>
+              </form>
+            </td>
+            <td class="row-actions">
+              <a class="btn btn-small" href="/admin/products/<%= p.id %>/edit"><%= t('admin_edit') %></a>
+              <form method="post" action="/admin/products/<%= p.id %>/delete" class="inline-form"
+                    onsubmit="return confirm('<%= t('admin_confirm_delete') %>')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-small btn-danger" type="submit"><%= t('admin_delete') %></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
