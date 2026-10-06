@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" data-theme="clair">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="<%= t('home_intro_text').slice(0, 150) %>">
+<title><%= t('meta_title') %></title>
+<script>
+try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentElement.setAttribute('data-theme', _th); } catch (e) {}
+</script>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="logo" href="/">Lesly Tech <span>LLC</span></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <label for="nav-toggle" class="nav-burger" aria-label="Menu">☰</label>
+    <nav class="site-nav">
+      <a href="/" class="<%= page === 'home' ? 'active' : '' %>"><%= t('nav_home') %></a>
+      <a href="/catalogue" class="<%= page === 'catalogue' ? 'active' : '' %>"><%= t('nav_catalogue') %></a>
+      <a href="/ebooks" class="<%= page === 'ebooks' ? 'active' : '' %>"><%= t('nav_ebooks') %></a>
+      <a href="/confidentialite" class="<%= page === 'confidentialite' ? 'active' : '' %>"><%= t('nav_privacy') %></a>
+      <a href="/propriete-intellectuelle" class="<%= page === 'propriete' ? 'active' : '' %>"><%= t('nav_ip') %></a>
+    </nav>
+    <div class="header-tools">
+      <span class="tool">
+        <span class="tool-label"><%= t('lang_label') %></span>
+        <span class="lang-links">
+          <% langs.forEach(function(l){ %>
+            <a href="/lang/<%= l %>" class="<%= l === lang ? 'active' : '' %>"><%= l.toUpperCase() %></a>
+          <% }) %>
+        </span>
+      </span>
+      <label class="tool">
+        <span class="tool-label"><%= t('theme_label') %></span>
+        <select id="theme-select" class="theme-select" aria-label="<%= t('theme_label') %>">
+          <option value="clair"><%= t('theme_clair') %></option>
+          <option value="ambre"><%= t('theme_ambre') %></option>
+          <option value="emeraude"><%= t('theme_emeraude') %></option>
+          <option value="nuit"><%= t('theme_nuit') %></option>
+          <option value="sombre"><%= t('theme_sombre') %></option>
+        </select>
+      </label>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">

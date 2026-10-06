@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+
+<section class="page-head ebook-head reveal">
+  <span class="eyebrow"><%= t('nav_ebooks') %></span>
+  <h1><%= t('ebooks_title') %></h1>
+  <p class="muted"><%= t('ebooks_sub') %></p>
+</section>
+
+<% if (ebooks.length === 0) { %>
+  <p class="muted"><%= t('empty_catalogue') %></p>
+<% } else { %>
+  <div class="grid">
+    <% ebooks.forEach(function(p){ %>
+      <%- include('partials/product_card', { p: p }) %>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" data-theme="clair">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= t('maintenance_title') %> — <%= t('meta_title') %></title>
+<script>try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentElement.setAttribute('data-theme', _th); } catch (e) {}</script>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <section class="maintenance">
+    <h1><%= t('maintenance_title') %></h1>
+    <p><%= t('maintenance_text') %></p>
+    <p class="logo-line">Lesly Tech <span>LLC</span></p>
+  </section>
+</main>
+<script src="/js/main.js"></script>
+</body>
+</html>

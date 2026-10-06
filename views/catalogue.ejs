@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+
+<section class="page-head reveal">
+  <span class="eyebrow"><%= t('nav_catalogue') %></span>
+  <h1><%= t('catalogue_title') %></h1>
+  <p class="muted"><%= t('catalogue_sub') %></p>
+</section>
+
+<div class="filters reveal">
+  <a href="/catalogue" class="<%= !filter ? 'active' : '' %>"><%= t('filter_all') %></a>
+  <a href="/catalogue?type=app" class="<%= filter === 'app' ? 'active' : '' %>"><%= t('type_app') %></a>
+  <a href="/catalogue?type=ebook" class="<%= filter === 'ebook' ? 'active' : '' %>"><%= t('type_ebook') %></a>
+  <a href="/catalogue?type=autre" class="<%= filter === 'autre' ? 'active' : '' %>"><%= t('type_autre') %></a>
+</div>
+
+<% if (products.length === 0) { %>
+  <p class="muted"><%= t('empty_catalogue') %></p>
+<% } else { %>
+  <div class="grid">
+    <% products.forEach(function(p){ %>
+      <%- include('partials/product_card', { p: p }) %>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

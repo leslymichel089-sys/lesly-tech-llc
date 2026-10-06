@@ -1,0 +1,35 @@
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="logo" href="/">Lesly Tech <span>LLC</span></a>
+        <p><%= t('footer_tagline') %></p>
+      </div>
+      <div class="footer-col">
+        <h4><%= t('footer_explore') %></h4>
+        <a href="/"><%= t('nav_home') %></a>
+        <a href="/catalogue"><%= t('nav_catalogue') %></a>
+        <a href="/ebooks"><%= t('nav_ebooks') %></a>
+      </div>
+      <div class="footer-col">
+        <h4><%= t('footer_legal') %></h4>
+        <a href="/confidentialite"><%= t('nav_privacy') %></a>
+        <a href="/propriete-intellectuelle"><%= t('nav_ip') %></a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span><%= t('footer_rights') %></span>
+      <span class="lang-links">
+        <% langs.forEach(function(l){ %>
+          <a href="/lang/<%= l %>" class="<%= l === lang ? 'active' : '' %>"><%= l.toUpperCase() %></a>
+        <% }) %>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

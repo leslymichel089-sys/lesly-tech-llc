@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+<section class="hero reveal">
+  <span class="hero-badge"><%= t('hero_badge') %></span>
+  <h1 class="hero-title"><%- t('welcome_title').replace('LESLY TECH LLC', '<span class="hl">LESLY TECH LLC</span>') %></h1>
+  <p class="hero-sub"><%= t('home_intro_text') %></p>
+  <div class="hero-ctas">
+    <a class="btn" href="/catalogue"><%= t('cta_catalogue') %></a>
+    <a class="btn btn-ghost" href="/ebooks"><%= t('ebooks_cta') %></a>
+  </div>
+</section>
+
+<section class="stats-strip reveal">
+  <div class="stat-card"><b><%= products.length %></b><span><%= t('stat_products') %></span></div>
+  <div class="stat-card"><b><%= products.filter(p => p.type === 'ebook').length %></b><span><%= t('stat_ebooks') %></span></div>
+  <div class="stat-card"><b>4</b><span><%= t('stat_langs') %></span></div>
+  <div class="stat-card"><b>5</b><span><%= t('stat_themes') %></span></div>
+</section>
+
+<section class="section reveal">
+  <span class="eyebrow"><%= t('home_intro_title') %></span>
+  <h2 class="sec-title"><%= t('home_creations_title') %></h2>
+  <div class="section-head">
+    <p class="muted"><%= t('home_creations_sub') %></p>
+    <a class="btn btn-small" href="/catalogue"><%= t('cta_catalogue') %></a>
+  </div>
+  <div class="grid">
+    <% products.filter(p => p.active).slice(0, 6).forEach(function(p){ %>
+      <%- include('partials/product_card', { p: p }) %>
+    <% }) %>
+  </div>
+</section>
+
+<section class="band reveal">
+  <h2><%= t('home_ebooks_title') %></h2>
+  <p><%= t('home_ebooks_text') %></p>
+  <a class="btn btn-light" href="/ebooks"><%= t('home_ebooks_cta') %></a>
+</section>
+
+<%- include('partials/footer') %>
