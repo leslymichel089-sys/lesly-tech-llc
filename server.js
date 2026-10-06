@@ -178,7 +178,14 @@ app.get('/admin', (req, res) => {
   const s = dbm.stats();
   const products = dbm.db.prepare('SELECT * FROM products ORDER BY id').all().map(dbm.rowToProduct);
   const enabled = dbm.getSetting('site_enabled') !== '0';
-  res.render('admin/dashboard', { page: 'admin', products, enabled, stats: s });
+  res.render('admin/dashboard', {
+    page: 'admin',
+    products,
+    enabled,
+    stats: s,
+    ...aiPageData(),
+    aiSaved: req.query.ai === 'saved',
+  });
 });
 
 app.post('/admin/setup', (req, res) => {
@@ -360,6 +367,9 @@ app.post('/admin/ai/credentials', requireLogin, (req, res) => {
   for (const [form, envName, dbKey] of AI_FIELDS) {
     const v = String(req.body[form] || '').trim();
     if (v && v !== MASK) dbm.setSetting(dbKey, v);
+  }
+  if (String(req.body.return_to || '') === '/admin') {
+    return res.redirect('/admin?ai=saved');
   }
   res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: true });
 });

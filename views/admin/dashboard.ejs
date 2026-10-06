@@ -33,15 +33,43 @@
 
 <section class="dash-panel">
   <div class="section-head">
-    <h2>Test des clés API</h2>
-    <a class="btn btn-small btn-ghost" href="/admin/ai">Configurer les clés</a>
+    <h2>Centre de contrôle IA</h2>
+    <a class="btn btn-small btn-ghost" href="/">Voir le site</a>
   </div>
-  <p class="muted small">Vérifie DeepSeek et Kimi avec la configuration enregistrée. Aucune clé n'est affichée.</p>
+  <p class="muted small">Colle les clés API, enregistre, puis vérifie leur statut. Tout reste ici, sans navigation dispersée.</p>
+  <% if (aiSaved) { %><p class="alert alert-ok">Clés API enregistrées.</p><% } %>
   <div id="api-test-result" class="alert" style="display:none" aria-live="polite"></div>
-  <div class="form-actions">
-    <button type="button" class="btn ai-test-dash" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
-    <button type="button" class="btn ai-test-dash" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
-  </div>
+
+  <form method="post" action="/admin/ai/credentials" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="return_to" value="/admin">
+
+    <fieldset class="cred-group">
+      <legend>DeepSeek — priorité 1</legend>
+      <div class="form-row">
+        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.deepseek_key, t: t }) %>
+          <input type="password" name="deepseek_key" value="<%= aiCreds.deepseek_key %>" autocomplete="new-password"></label>
+        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.deepseek_model, t: t }) %>
+          <input type="text" name="deepseek_model" value="<%= aiCreds.deepseek_model %>" placeholder="deepseek-chat"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend>Kimi — priorité 2</legend>
+      <div class="form-row">
+        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.kimi_key, t: t }) %>
+          <input type="password" name="kimi_key" value="<%= aiCreds.kimi_key %>" autocomplete="new-password"></label>
+        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.kimi_model, t: t }) %>
+          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="kimi-k2.6"></label>
+      </div>
+    </fieldset>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Enregistrer les clés</button>
+      <button type="button" class="btn ai-test-dash" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
+      <button type="button" class="btn ai-test-dash" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
+    </div>
+  </form>
 </section>
 
 <section class="dash-panel">
@@ -255,6 +283,11 @@
 
 <script>
 (function () {
+  function field(provider, name) {
+    var el = document.querySelector('[name="' + provider + '_' + name + '"]');
+    return el ? el.value : '';
+  }
+
   function showResult(result, isOk) {
     var box = document.getElementById('api-test-result');
     if (!box) return;
@@ -267,11 +300,18 @@
     btn.addEventListener('click', async function () {
       var provider = btn.getAttribute('data-provider');
       showResult('Test en cours pour ' + provider + '…', true);
+      var payload = {
+        provider: provider,
+        _csrf: btn.getAttribute('data-csrf')
+      };
+      payload[provider + '_key'] = field(provider, 'key');
+      payload[provider + '_base_url'] = field(provider, 'base_url');
+      payload[provider + '_model'] = field(provider, 'model');
       try {
         var res = await fetch('/admin/ai/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: provider, _csrf: btn.getAttribute('data-csrf') })
+          body: JSON.stringify(payload)
         });
         var data = await res.json();
         if (!data || !data.result) {
