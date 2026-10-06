@@ -106,6 +106,14 @@ async function callGeneric(p, prompt, lang) {
 }
 
 function buildProviders(prompt, lang) {
+  const DEEPSEEK_BASE_URL = (getConfig('ai_deepseek_base_url', 'DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1') || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+  const DEEPSEEK_API_KEY = getConfig('ai_deepseek_key', 'DEEPSEEK_API_KEY');
+  const DEEPSEEK_MODEL = getConfig('ai_deepseek_model', 'DEEPSEEK_MODEL', 'deepseek-chat');
+
+  const KIMI_BASE_URL = (getConfig('ai_kimi_base_url', 'KIMI_BASE_URL', 'https://api.moonshot.ai/v1') || 'https://api.moonshot.ai/v1').replace(/\/$/, '');
+  const KIMI_API_KEY = getConfig('ai_kimi_key', 'KIMI_API_KEY');
+  const KIMI_MODEL = getConfig('ai_kimi_model', 'KIMI_MODEL', 'kimi-k2.6');
+
   const list = [];
 
   if (DEEPSEEK_API_KEY) {
