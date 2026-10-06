@@ -73,8 +73,8 @@ async function callOpenAICompatible(baseUrl, apiKey, model, prompt, lang) {
     },
     apiKey
   );
-  const text = data && data.choices && data.choices[0] &&
-    data.choices[0].message && data.choices[0].message.content;
+  const msg = data && data.choices && data.choices[0] && data.choices[0].message;
+  const text = msg && (msg.content || msg.reasoning_content);
   if (!text || !String(text).trim()) throw new Error('réponse vide ou invalide');
   return String(text).trim();
 }
