@@ -1,14 +1,20 @@
 <%- include('partials/header') %>
 
 <article class="legal">
-  <h1><%= t(doc === 'privacy' ? 'privacy_title' : 'ip_title') %></h1>
-  <p class="lead"><%= t(doc === 'privacy' ? 'privacy_intro' : 'ip_intro') %></p>
-  <% (t(doc === 'privacy' ? 'privacy_sections' : 'ip_sections') || []).forEach(function(s){ %>
+  <% var titleKey = doc === 'privacy' ? 'privacy_title' : (doc === 'terms' ? 'terms_title' : 'ip_title'); %>
+  <% var introKey = doc === 'privacy' ? 'privacy_intro' : (doc === 'terms' ? 'terms_intro' : 'ip_intro'); %>
+  <% var sectionsKey = doc === 'privacy' ? 'privacy_sections' : (doc === 'terms' ? 'terms_sections' : 'ip_sections'); %>
+  <h1><%= t(titleKey) %></h1>
+  <p class="lead"><%= t(introKey) %></p>
+  <% (t(sectionsKey) || []).forEach(function(s){ %>
     <section>
       <h2><%= s.h %></h2>
       <p><%= s.p %></p>
     </section>
   <% }) %>
+  <% if (doc === 'privacy') { %>
+    <p><a class="btn" href="/contact"><%= t('nav_contact') %></a></p>
+  <% } %>
 </article>
 
 <%- include('partials/footer') %>

@@ -14,6 +14,7 @@ function verify(req, res, next) {
 function middleware(req, res, next) {
   if (!req.session.csrf) req.session.csrf = crypto.randomBytes(24).toString('hex');
   res.locals.csrfToken = req.session.csrf;
+  if (req.path === '/api/heartbeat') return next(); // jeton Bearer vérifié dans la route
   if (req.method === 'POST') {
     const ct = req.headers['content-type'] || '';
     // Formulaires multipart (upload d'image) : req.body n'existe qu'après multer,

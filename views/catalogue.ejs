@@ -6,6 +6,12 @@
   <p class="muted"><%= t('catalogue_sub') %></p>
 </section>
 
+<form class="catalogue-search reveal" method="get" action="/catalogue">
+  <input type="search" name="q" value="<%= q || '' %>" placeholder="Rechercher une création…" aria-label="Rechercher dans le catalogue">
+  <% if (filter) { %><input type="hidden" name="type" value="<%= filter %>"><% } %>
+  <button class="btn btn-small" type="submit">Rechercher</button>
+</form>
+
 <div class="filters reveal">
   <a href="/catalogue" class="<%= !filter ? 'active' : '' %>"><%= t('filter_all') %></a>
   <a href="/catalogue?type=app" class="<%= filter === 'app' ? 'active' : '' %>"><%= t('type_app') %></a>

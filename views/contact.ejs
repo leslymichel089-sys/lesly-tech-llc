@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+<section class="page-head">
+  <h1><%= t('contact_title') %></h1>
+  <p class="muted"><%= t('contact_intro') %></p>
+</section>
+
+<% if (sent) { %><p class="alert alert-ok">Message pris en compte. Si un canal de notification est configuré, il sera transmis à Lesly Tech LLC.</p><% } %>
+
+<section class="dash-panel">
+  <div class="contact-grid">
+    <div>
+      <h2><%= t('contact_address_label') %></h2>
+      <p>Lesly Tech LLC<br>2512 Delaware Pl<br>High Point, NC 27260<br>USA</p>
+    </div>
+    <div>
+      <h2><%= t('contact_email_label') %></h2>
+      <p><a href="mailto:<%= contactEmail %>"><%= contactEmail %></a></p>
+    </div>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('contact_form_title') %></h2>
+  <form method="post" action="/contact" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-row">
+      <label><%= t('contact_form_name') %>
+        <input type="text" name="name" autocomplete="name"></label>
+      <label><%= t('contact_form_email') %>
+        <input type="email" name="email" autocomplete="email"></label>
+    </div>
+    <label><%= t('contact_form_message') %>
+      <textarea name="message" rows="5"></textarea></label>
+    <p class="muted small"><%= t('contact_form_note') %></p>
+    <div><button class="btn" type="submit"><%= t('contact_form_submit') %></button></div>
+  </form>
+</section>
+
+<%- include('partials/footer') %>

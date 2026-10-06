@@ -4,9 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="<%= t('home_intro_text').slice(0, 150) %>">
+<link rel="canonical" href="<%= siteUrl + currentPath %>">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lesly Tech LLC">
+<meta property="og:title" content="<%= t('meta_title') %>">
+<meta property="og:description" content="<%= t('home_intro_text').slice(0, 150) %>">
+<meta property="og:url" content="<%= siteUrl + currentPath %>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= t('meta_title') %>">
+<meta name="twitter:description" content="<%= t('home_intro_text').slice(0, 150) %>">
 <title><%= t('meta_title') %></title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <script>
 try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentElement.setAttribute('data-theme', _th); } catch (e) {}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Lesly Tech LLC",
+  "url": "<%= siteUrl %>",
+  "email": "<%= contactEmail %>",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "2512 Delaware Pl",
+    "addressLocality": "High Point",
+    "addressRegion": "NC",
+    "postalCode": "27260",
+    "addressCountry": "US"
+  }
+}
 </script>
 <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -22,6 +52,8 @@ try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentEle
       <a href="/ebooks" class="<%= page === 'ebooks' ? 'active' : '' %>"><%= t('nav_ebooks') %></a>
       <a href="/confidentialite" class="<%= page === 'confidentialite' ? 'active' : '' %>"><%= t('nav_privacy') %></a>
       <a href="/propriete-intellectuelle" class="<%= page === 'propriete' ? 'active' : '' %>"><%= t('nav_ip') %></a>
+      <a href="/conditions" class="<%= page === 'conditions' ? 'active' : '' %>"><%= t('nav_terms') %></a>
+      <a href="/contact" class="<%= page === 'contact' ? 'active' : '' %>"><%= t('nav_contact') %></a>
     </nav>
     <div class="header-tools">
       <span class="tool">

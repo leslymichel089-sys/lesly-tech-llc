@@ -39,4 +39,20 @@
 </section>
 <% } %>
 
+<%
+var schema = { '@context': 'https://schema.org', name: product.title, description: descFor(product, lang), image: product.image || (siteUrl + '/img/covers/viktor.jpg') };
+if (product.type === 'ebook') {
+  schema['@type'] = 'Book';
+  schema.author = { '@type': 'Organization', name: 'Lesly Tech LLC' };
+} else if (product.type === 'app') {
+  schema['@type'] = 'SoftwareApplication';
+  schema.applicationCategory = 'UtilitiesApplication';
+  schema.operatingSystem = 'Android';
+  schema.offers = { '@type': 'Offer', price: '0', priceCurrency: 'USD' };
+} else {
+  schema['@type'] = 'Product';
+}
+%>
+<script type="application/ld+json"><%- JSON.stringify(schema) %></script>
+
 <%- include('partials/footer') %>

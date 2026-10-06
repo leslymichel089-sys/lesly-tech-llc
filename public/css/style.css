@@ -231,6 +231,8 @@ main.wrap { padding-top: 12px; padding-bottom: 40px; min-height: 60vh; }
 .dash-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 26px; margin: 22px 0; box-shadow: var(--shadow-s); }
 .dash-panel h2 { font-size: 1.25rem; margin-bottom: 16px; }
+.contact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; }
+@media (max-width: 760px) { .contact-grid { grid-template-columns: 1fr; } }
 .dash-actions { display: flex; gap: 10px; }
 .inline-form { display: inline; }
 .status-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -302,3 +304,9 @@ main.wrap { padding-top: 12px; padding-bottom: 40px; min-height: 60vh; }
   .footer-grid { grid-template-columns: 1fr; }
   .hero-ctas .btn { width: 100%; }
 }
+
+/* Newsletter + recherche catalogue */
+.footer-newsletter .newsletter-form { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.footer-newsletter .newsletter-form input[type=email] { flex:1 1 180px; }
+.catalogue-search { display:flex; gap:8px; margin:0 0 18px; max-width:560px; }
+.catalogue-search input[type=search] { flex:1; }

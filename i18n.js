@@ -35,7 +35,11 @@ function parseCookies(req) {
 
 function middleware(req, res, next) {
   const cookies = parseCookies(req);
-  const lang = LANGS.includes(cookies.lang) ? cookies.lang : DEFAULT_LANG;
+  const queryLang = req.query && LANGS.includes(req.query.lang) ? req.query.lang : null;
+  const lang = queryLang || (LANGS.includes(cookies.lang) ? cookies.lang : DEFAULT_LANG);
+  if (queryLang) {
+    res.setHeader('Set-Cookie', `lang=${queryLang}; Path=/; Max-Age=${365 * 24 * 3600}; SameSite=Lax`);
+  }
   req.lang = lang;
   const t = (key) => {
     const v = lookup(lang, key);

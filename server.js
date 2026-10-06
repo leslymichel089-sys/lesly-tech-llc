@@ -41,6 +41,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
+app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -49,10 +50,18 @@ app.use(express.json({ limit: '2mb' }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'changez-moi-en-production',
   resave: false, saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 12 * 3600 * 1000 },
+  cookie: { httpOnly: true, sameSite: 'lax', secure: SITE_URL.startsWith('https://'), maxAge: 12 * 3600 * 1000 },
 }));
 app.use(i18n);
 app.use(csrf);
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 
 // Upload d'images produits.
 const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -88,6 +97,8 @@ app.use((req, res, next) => {
   res.locals.siteUrl = SITE_URL;
   res.locals.descFor = descFor;
   res.locals.isAdmin = !!req.session.admin;
+  res.locals.contactEmail = process.env.CONTACT_EMAIL || 'contact@leslytechllc.com';
+  res.locals.currentPath = req.path;
   next();
 });
 
@@ -135,10 +146,15 @@ app.get('/', (req, res) => {
 
 app.get('/catalogue', (req, res) => {
   const filter = ['app', 'ebook', 'autre'].includes(req.query.type) ? req.query.type : '';
+  const q = String(req.query.q || '').trim().toLowerCase();
   let products = filter
     ? dbm.qByType.all(filter).map(dbm.rowToProduct)
     : dbm.qAll.all().map(dbm.rowToProduct);
-  res.render('catalogue', { page: 'catalogue', products, filter });
+  if (q) {
+    products = products.filter((p) => [p.title, p.desc_fr, p.desc_en, p.desc_ht, p.desc_es]
+      .some((v) => String(v || '').toLowerCase().includes(q)));
+  }
+  res.render('catalogue', { page: 'catalogue', products, filter, q: String(req.query.q || '') });
 });
 
 app.get('/ebooks', (req, res) => {
@@ -164,12 +180,83 @@ app.get('/go/:id/:index', (req, res) => {
 
 app.get('/confidentialite', (req, res) => res.render('legal', { page: 'confidentialite', doc: 'privacy' }));
 app.get('/propriete-intellectuelle', (req, res) => res.render('legal', { page: 'propriete', doc: 'ip' }));
+app.get('/conditions', (req, res) => res.render('legal', { page: 'conditions', doc: 'terms' }));
+app.get('/contact', (req, res) => res.render('contact', { page: 'contact', sent: false }));
+app.post('/contact', async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim();
+  const message = String(req.body.message || '').trim();
+  if (name && email && message) {
+    notify.sendAll('Nouveau message de contact', `Nom: ${name}\nEmail: ${email}\n\n${message}`).catch(() => {});
+  }
+  res.render('contact', { page: 'contact', sent: true });
+});
+
+// ---------- Newsletter ----------
+app.post('/newsletter', (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const ok = valid ? dbm.addSubscriber(email) : false;
+  const referer = req.get('Referer') || '/';
+  const sep = referer.includes('?') ? '&' : '?';
+  res.redirect(referer + sep + (ok ? 'newsletter=ok' : 'newsletter=error'));
+});
+
+// ---------- SEO technique ----------
+app.get('/api/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true, service: 'lesly-tech-llc', time: new Date().toISOString() });
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /go\nDisallow: /lang\n\nSitemap: ' + SITE_URL + '/sitemap.xml\n');
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  const esc = (s) => String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const products = dbm.qAll.all().map(dbm.rowToProduct);
+  const paths = [
+    SITE_URL + '/',
+    SITE_URL + '/catalogue',
+    SITE_URL + '/ebooks',
+    SITE_URL + '/confidentialite',
+    SITE_URL + '/propriete-intellectuelle',
+    SITE_URL + '/conditions',
+    SITE_URL + '/contact',
+    ...products.map((p) => SITE_URL + '/produit/' + p.id),
+  ];
+  const langs = ['fr', 'en', 'ht', 'es'];
+  const alt = (u) => langs.map((l) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${esc(u + (u.includes('?') ? '&' : '?') + 'lang=' + l)}"/>`).join('\n');
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' +
+    paths.map((u) => '  <url>\n    <loc>' + esc(u) + '</loc>\n' + alt(u) + '\n  </url>').join('\n') +
+    '\n</urlset>';
+  res.type('application/xml').send(xml);
+});
+
 
 // ---------- Admin ----------
 function hasSecret() { return !!dbm.getSetting('admin_code_hash'); }
 function requireLogin(req, res, next) {
   if (!req.session.admin) return res.redirect('/admin');
   next();
+}
+
+const loginAttempts = new Map();
+function loginBlocked(req) {
+  const key = req.ip || 'unknown';
+  const now = Date.now();
+  const list = (loginAttempts.get(key) || []).filter((t) => now - t < 15 * 60 * 1000);
+  loginAttempts.set(key, list);
+  return list.length >= 5;
+}
+function loginFailed(req) {
+  const key = req.ip || 'unknown';
+  const list = loginAttempts.get(key) || [];
+  list.push(Date.now());
+  loginAttempts.set(key, list);
 }
 
 app.get('/admin', (req, res) => {
@@ -202,11 +289,16 @@ app.post('/admin/setup', (req, res) => {
 
 app.post('/admin/login', (req, res) => {
   if (!hasSecret()) return res.redirect('/admin');
+  if (loginBlocked(req)) {
+    return res.render('admin/login', { page: 'admin', error: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+  }
   const hash = dbm.getSetting('admin_code_hash');
   if (bcrypt.compareSync(String(req.body.code || ''), hash)) {
+    loginAttempts.delete(req.ip || 'unknown');
     req.session.admin = true;
     return res.redirect('/admin');
   }
+  loginFailed(req);
   res.render('admin/login', { page: 'admin', error: res.locals.t('admin_login_error') });
 });
 
@@ -430,6 +522,22 @@ app.post('/admin/ai/test', requireLogin, async (req, res) => {
   } catch (e) {
     res.json({ ok: false, provider, result: { ok: false, error: e.message, models: [], chatOk: false } });
   }
+});
+// ---------- Admin : newsletter ----------
+app.get('/admin/newsletter', requireLogin, (req, res) => {
+  res.render('admin/newsletter', {
+    page: 'admin',
+    subscribers: dbm.listSubscribers(),
+    count: dbm.countSubscribers(),
+  });
+});
+
+app.get('/admin/newsletter.csv', requireLogin, (req, res) => {
+  const rows = dbm.listSubscribers();
+  const csv = 'email,created_at\n' + rows.map((r) => `${r.email},${r.created_at}`).join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="newsletter-lesly-tech-llc.csv"');
+  res.send('\ufeff' + csv);
 });
 // ---------- Admin : notifications / watchdog ----------
 const CRED_FIELDS = [

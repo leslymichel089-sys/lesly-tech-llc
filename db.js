@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS notif_log (
   channels TEXT DEFAULT '[]', ok INTEGER DEFAULT 0,
   at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS subscribers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS app_status (
+  app TEXT PRIMARY KEY,
+  status TEXT DEFAULT '',
+  detail TEXT DEFAULT '',
+  updated_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 const getSetting = (k, dflt = '') => {
@@ -213,4 +224,20 @@ function logNotif(type, title, message, channels) {
     .run(type, `${title} — ${message}`.slice(0, 500), JSON.stringify(channels || []), 1);
 }
 
-module.exports = { db, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif };
+const addSubscriber = (email) => {
+  try {
+    db.prepare('INSERT INTO subscribers (email) VALUES (?)').run(email);
+    return true;
+  } catch (e) {
+    return false; // déjà inscrit ou email invalide
+  }
+};
+const listSubscribers = () => db.prepare('SELECT * FROM subscribers ORDER BY created_at DESC, id DESC').all();
+const countSubscribers = () => db.prepare('SELECT COUNT(*) AS n FROM subscribers').get().n;
+const setAppStatus = (app, status, detail = '') => {
+  db.prepare(`INSERT INTO app_status (app, status, detail, updated_at)
+              VALUES (?, ?, ?, datetime('now'))
+              ON CONFLICT(app) DO UPDATE SET status = excluded.status, detail = excluded.detail, updated_at = excluded.updated_at`).run(app, status, detail);
+};
+const listAppStatus = () => db.prepare('SELECT * FROM app_status ORDER BY app').all();
+module.exports = { db, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus };
