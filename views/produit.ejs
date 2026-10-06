@@ -1,0 +1,42 @@
+<%- include('partials/header') %>
+
+<article class="product-detail reveal">
+  <div class="detail-media">
+    <% if (product.image) { %>
+      <img src="<%= product.image %>" alt="<%= product.title %>">
+    <% } else { %>
+      <div class="card-ph card-ph-big" aria-hidden="true"><span><%= product.title.charAt(0).toUpperCase() %></span></div>
+    <% } %>
+  </div>
+  <div class="detail-body">
+    <a class="back-link" href="/catalogue">← <%= t('nav_catalogue') %></a>
+    <div class="card-tags">
+      <span class="tag tag-type"><%= t('type_' + (product.type === 'app' ? 'app' : product.type === 'ebook' ? 'ebook' : 'autre')) %></span>
+      <% if (product.version) { %><span class="tag"><%= t('badge_version') %> <%= product.version %></span><% } %>
+      <% if (product.update_available) { %><span class="tag tag-update"><%= t('badge_update') %></span><% } %>
+    </div>
+    <h1><%= product.title %></h1>
+    <p class="detail-desc"><%= descFor(product, lang) %></p>
+    <% if (product.links && product.links.length) { %>
+      <h2 class="links-title"><%= t('product_links_title') %></h2>
+      <div class="links-list">
+        <% product.links.forEach(function(l, i){ %>
+          <a class="btn" href="/go/<%= product.id %>/<%= i %>" target="_blank" rel="noopener"><%= l.label %> ↗</a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</article>
+
+<% if (related && related.length) { %>
+<section class="section">
+  <h2 class="sec-title"><%= t('home_creations_title') %></h2>
+  <div class="grid">
+    <% related.forEach(function(p){ %>
+      <%- include('partials/product_card', { p: p }) %>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<%- include('partials/footer') %>
