@@ -18,7 +18,7 @@ const DEEPSEEK_MODEL = getConfig('ai_deepseek_model', 'DEEPSEEK_MODEL', 'deepsee
 
 const KIMI_BASE_URL = (getConfig('ai_kimi_base_url', 'KIMI_BASE_URL', 'https://api.moonshot.ai/v1') || 'https://api.moonshot.ai/v1').replace(/\/$/, '');
 const KIMI_API_KEY = getConfig('ai_kimi_key', 'KIMI_API_KEY');
-const KIMI_MODEL = getConfig('ai_kimi_model', 'KIMI_MODEL', 'moonshot-v1-8k');
+const KIMI_MODEL = getConfig('ai_kimi_model', 'KIMI_MODEL', 'kimi-k2.6');
 
 const OMNIROUTE_URL = (process.env.OMNIROUTE_URL || '').replace(/\/$/, '');
 const OMNIROUTE_MODEL = process.env.OMNIROUTE_MODEL || 'auto';
@@ -173,4 +173,85 @@ async function generateDescription(prompt, lang = 'fr') {
   throw err;
 }
 
-module.exports = { generateDescription, onEvent };
+async function getJson(url, key) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: key ? { Authorization: `Bearer ${key}` } : {},
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch (e) { json = null; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}${text ? ` ${text.slice(0, 160)}` : ''}`);
+    return json;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function listModels(baseUrl, key) {
+  const data = await getJson(`${baseUrl.replace(/\/$/, '')}/models`, key);
+  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+  return rows.map((m) => m.id || m.model || m.name || '').filter(Boolean);
+}
+
+async function probeChat(baseUrl, key, model) {
+  const data = await postJson(
+    `${baseUrl.replace(/\/$/, '')}/chat/completions`,
+    {
+      model,
+      messages: [{ role: 'user', content: 'Test de connexion. Reponds uniquement : OK.' }],
+      max_tokens: 128,
+    },
+    key
+  );
+  const msg = data && data.choices && data.choices[0] && data.choices[0].message;
+  const text = msg && (msg.content || msg.reasoning_content);
+  return {
+    model: (data && data.model) || model,
+    text: text ? String(text).trim() : '',
+  };
+}
+
+// Teste une cle OpenAI-compatible : liste les modeles, puis tente un appel minimal.
+async function testProviderConfig({ baseUrl, apiKey, model }) {
+  if (!apiKey) return { ok: false, error: 'Cle API manquante', models: [], chatOk: false };
+  if (!baseUrl) return { ok: false, error: 'URL de base manquante', models: [], chatOk: false };
+
+  const started = Date.now();
+  let models = [];
+  try {
+    models = await listModels(baseUrl, apiKey);
+  } catch (e) {
+    return { ok: false, error: e.message, models: [], chatOk: false, latencyMs: Date.now() - started };
+  }
+
+  let chatError = null;
+  let chatModel = '';
+  let sample = '';
+  if (model) {
+    try {
+      const probe = await probeChat(baseUrl, apiKey, model);
+      chatModel = probe.model;
+      sample = probe.text.slice(0, 180);
+    } catch (e) {
+      chatError = e.message;
+    }
+  }
+
+  return {
+    ok: true,
+    error: null,
+    models,
+    chatOk: !chatError && !!sample,
+    chatError,
+    chatModel,
+    sample,
+    latencyMs: Date.now() - started,
+  };
+}
+
+module.exports = { generateDescription, onEvent, testProviderConfig };

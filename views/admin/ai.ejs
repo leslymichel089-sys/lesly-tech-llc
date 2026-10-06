@@ -8,7 +8,71 @@
   </div>
 </section>
 
+<script>
+(function () {
+  function field(provider, name) {
+    var el = document.querySelector('[name="' + provider + '_' + name + '"]');
+    return el ? el.value : '';
+  }
+
+  function showResult(result, isOk) {
+    var box = document.getElementById('ai-test-result');
+    if (!box) return;
+    box.style.display = 'block';
+    box.className = 'alert ' + (isOk ? 'alert-ok' : 'alert-error');
+    box.textContent = result;
+  }
+
+  document.querySelectorAll('.ai-test').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var provider = btn.getAttribute('data-provider');
+      showResult('Test en cours pour ' + provider + '…', true);
+      var payload = {
+        provider: provider,
+        _csrf: btn.getAttribute('data-csrf')
+      };
+      payload[provider + '_key'] = field(provider, 'key');
+      payload[provider + '_base_url'] = field(provider, 'base_url');
+      payload[provider + '_model'] = field(provider, 'model');
+
+      try {
+        var res = await fetch('/admin/ai/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        var data = await res.json();
+        if (!data || !data.result) {
+          showResult('Réponse invalide du serveur.', false);
+          return;
+        }
+        var r = data.result;
+        var msg = data.provider + ' : ' + (r.ok ? 'clé valide' : 'échec') + '.';
+        if (r.latencyMs != null) msg += ' Latence ' + r.latencyMs + ' ms.';
+        if (Array.isArray(r.models) && r.models.length) {
+          msg += ' Modèles disponibles : ' + r.models.slice(0, 8).join(', ') + '.';
+        }
+        if (r.chatOk) {
+          msg += ' Appel chat OK';
+          if (r.sample) msg += ' (« ' + r.sample + ' »)';
+          msg += '.';
+        } else if (r.chatError) {
+          msg += ' Appel chat non confirmé : ' + r.chatError + '.';
+        }
+        if (r.error) msg += ' Détail : ' + r.error + '.';
+        showResult(msg, r.ok);
+      } catch (e) {
+        showResult('Erreur réseau : ' + e.message, false);
+      }
+    });
+  });
+})();
+</script>
+
+<%- include('../partials/footer') %>
+
 <% if (saved) { %><p class="alert alert-ok">Configuration IA enregistrée.</p><% } %>
+<div id="ai-test-result" class="alert" style="display:none" aria-live="polite"></div>
 
 <section class="dash-panel">
   <h2>Fournisseurs principaux</h2>
@@ -25,6 +89,9 @@
         <label>Modèle <%- include('cred_badge', { src: aiCredSrc.deepseek_model, t: t }) %>
           <input type="text" name="deepseek_model" value="<%= aiCreds.deepseek_model %>" placeholder="deepseek-chat"></label>
       </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
+      </div>
     </fieldset>
 
     <fieldset class="cred-group">
@@ -35,7 +102,10 @@
         <label>URL de base <%- include('cred_badge', { src: aiCredSrc.kimi_base_url, t: t }) %>
           <input type="text" name="kimi_base_url" value="<%= aiCreds.kimi_base_url %>" placeholder="https://api.moonshot.ai/v1"></label>
         <label>Modèle <%- include('cred_badge', { src: aiCredSrc.kimi_model, t: t }) %>
-          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="moonshot-v1-8k"></label>
+          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="kimi-k2.6"></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
       </div>
     </fieldset>
 

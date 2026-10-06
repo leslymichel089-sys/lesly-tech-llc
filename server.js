@@ -363,6 +363,45 @@ app.post('/admin/ai/credentials', requireLogin, (req, res) => {
   }
   res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: true });
 });
+
+function aiEffectiveConfig(provider, body = {}) {
+  const p = provider === 'kimi' ? 'kimi' : 'deepseek';
+  const env = p === 'kimi'
+    ? { key: 'KIMI_API_KEY', base: 'KIMI_BASE_URL', model: 'KIMI_MODEL' }
+    : { key: 'DEEPSEEK_API_KEY', base: 'DEEPSEEK_BASE_URL', model: 'DEEPSEEK_MODEL' };
+  const dbKey = p === 'kimi'
+    ? { key: 'ai_kimi_key', base: 'ai_kimi_base_url', model: 'ai_kimi_model' }
+    : { key: 'ai_deepseek_key', base: 'ai_deepseek_base_url', model: 'ai_deepseek_model' };
+  const fallback = p === 'kimi'
+    ? { key: '', base: 'https://api.moonshot.ai/v1', model: 'kimi-k2.6' }
+    : { key: '', base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' };
+
+  const submittedKey = String(body[`${p}_key`] || '').trim();
+  const apiKey = submittedKey && submittedKey !== MASK
+    ? submittedKey
+    : (process.env[env.key] || dbm.getSetting(dbKey.key) || fallback.key);
+  const baseUrl = String(body[`${p}_base_url`] || '').trim()
+    || process.env[env.base]
+    || dbm.getSetting(dbKey.base)
+    || fallback.base;
+  const model = String(body[`${p}_model`] || '').trim()
+    || process.env[env.model]
+    || dbm.getSetting(dbKey.model)
+    || fallback.model;
+
+  return { provider: p, apiKey, baseUrl, model };
+}
+
+app.post('/admin/ai/test', requireLogin, async (req, res) => {
+  const provider = ['deepseek', 'kimi'].includes(String(req.body.provider || '')) ? req.body.provider : 'deepseek';
+  const cfg = aiEffectiveConfig(provider, req.body);
+  try {
+    const result = await ai.testProviderConfig(cfg);
+    res.json({ ok: result.ok, provider, result });
+  } catch (e) {
+    res.json({ ok: false, provider, result: { ok: false, error: e.message, models: [], chatOk: false } });
+  }
+});
 // ---------- Admin : notifications / watchdog ----------
 const CRED_FIELDS = [
   ['smtp_host', 'SMTP_HOST', 'notif_smtp_host'],
