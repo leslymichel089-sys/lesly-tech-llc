@@ -13,6 +13,8 @@ services:
     envVars:
       - key: SITE_URL
         value: https://lesly-tech-llc.onrender.com
+      - key: DB_PATH
+        value: /data/site.db
       - key: SESSION_SECRET
         generateValue: true
       # OMNIROUTE_URL : à renseigner plus tard si un tunnel sécurisé vers le PC est mis en place.
