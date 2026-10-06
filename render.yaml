@@ -1,0 +1,22 @@
+# Blueprint Render — déploiement en un clic.
+# Sur Render : "New" → "Blueprint" → connectez ce dépôt.
+services:
+  - type: web
+    name: lesly-tech-llc
+    runtime: docker
+    plan: starter
+    healthCheckPath: /
+    disk:
+      name: lesly-tech-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SITE_URL
+        value: https://lesly-tech-llc.onrender.com
+      - key: SESSION_SECRET
+        generateValue: true
+      # OMNIROUTE_URL : à renseigner plus tard si un tunnel sécurisé vers le PC est mis en place.
+      # (localhost ne fonctionnerait pas depuis Render : l'IA admin utilisera son mode de secours en attendant)
+      # Notifications : renseignez vos clés ici ou dans /admin/notifications
+      # - key: TELEGRAM_BOT_TOKEN
+      #   sync: false
