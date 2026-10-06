@@ -326,6 +326,43 @@ app.post('/admin/ai/generate', requireLogin, async (req, res) => {
   }
 });
 
+// ---------- Admin : configuration IA (DeepSeek -> Kimi -> secours) ----------
+const AI_FIELDS = [
+  ['deepseek_key', 'DEEPSEEK_API_KEY', 'ai_deepseek_key', true],
+  ['deepseek_base_url', 'DEEPSEEK_BASE_URL', 'ai_deepseek_base_url'],
+  ['deepseek_model', 'DEEPSEEK_MODEL', 'ai_deepseek_model'],
+  ['kimi_key', 'KIMI_API_KEY', 'ai_kimi_key', true],
+  ['kimi_base_url', 'KIMI_BASE_URL', 'ai_kimi_base_url'],
+  ['kimi_model', 'KIMI_MODEL', 'ai_kimi_model'],
+];
+
+function aiSourceOf(envName, dbKey) {
+  if (process.env[envName]) return 'env';
+  if (dbm.getSetting(dbKey)) return 'admin';
+  return null;
+}
+
+function aiPageData() {
+  const creds = {}, credSrc = {};
+  for (const [form, envName, dbKey, secret] of AI_FIELDS) {
+    credSrc[form] = aiSourceOf(envName, dbKey);
+    const v = dbm.getSetting(dbKey) || '';
+    creds[form] = secret ? (v ? MASK : '') : v;
+  }
+  return { aiCreds: creds, aiCredSrc: credSrc };
+}
+
+app.get('/admin/ai', requireLogin, (req, res) => {
+  res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: false });
+});
+
+app.post('/admin/ai/credentials', requireLogin, (req, res) => {
+  for (const [form, envName, dbKey] of AI_FIELDS) {
+    const v = String(req.body[form] || '').trim();
+    if (v && v !== MASK) dbm.setSetting(dbKey, v);
+  }
+  res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: true });
+});
 // ---------- Admin : notifications / watchdog ----------
 const CRED_FIELDS = [
   ['smtp_host', 'SMTP_HOST', 'notif_smtp_host'],
