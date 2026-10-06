@@ -8,6 +8,49 @@
   </div>
 </section>
 
+<% if (saved) { %><p class="alert alert-ok">Configuration IA enregistrée.</p><% } %>
+<div id="ai-test-result" class="alert" style="display:none" aria-live="polite"></div>
+
+<section class="dash-panel">
+  <h2>Fournisseurs principaux</h2>
+  <form method="post" action="/admin/ai/credentials" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <fieldset class="cred-group">
+      <legend>DeepSeek — priorité 1</legend>
+      <div class="form-row">
+        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.deepseek_key, t: t }) %>
+          <input type="password" name="deepseek_key" value="<%= aiCreds.deepseek_key %>" autocomplete="new-password"></label>
+        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.deepseek_base_url, t: t }) %>
+          <input type="text" name="deepseek_base_url" value="<%= aiCreds.deepseek_base_url %>" placeholder="https://api.deepseek.com/v1"></label>
+        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.deepseek_model, t: t }) %>
+          <input type="text" name="deepseek_model" value="<%= aiCreds.deepseek_model %>" placeholder="deepseek-chat"></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend>Kimi — priorité 2</legend>
+      <div class="form-row">
+        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.kimi_key, t: t }) %>
+          <input type="password" name="kimi_key" value="<%= aiCreds.kimi_key %>" autocomplete="new-password"></label>
+        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.kimi_base_url, t: t }) %>
+          <input type="text" name="kimi_base_url" value="<%= aiCreds.kimi_base_url %>" placeholder="https://api.moonshot.ai/v1"></label>
+        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.kimi_model, t: t }) %>
+          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="kimi-k2.6"></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
+      </div>
+    </fieldset>
+
+    <p class="muted small">Les clés restent stockées localement dans la base du site et ne sont jamais affichées en clair ici.</p>
+    <div><button class="btn" type="submit">Enregistrer la configuration IA</button></div>
+  </form>
+</section>
+
 <script>
 (function () {
   function field(provider, name) {
@@ -70,46 +113,3 @@
 </script>
 
 <%- include('../partials/footer') %>
-
-<% if (saved) { %><p class="alert alert-ok">Configuration IA enregistrée.</p><% } %>
-<div id="ai-test-result" class="alert" style="display:none" aria-live="polite"></div>
-
-<section class="dash-panel">
-  <h2>Fournisseurs principaux</h2>
-  <form method="post" action="/admin/ai/credentials" class="form form-wide">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-    <fieldset class="cred-group">
-      <legend>DeepSeek — priorité 1</legend>
-      <div class="form-row">
-        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.deepseek_key, t: t }) %>
-          <input type="password" name="deepseek_key" value="<%= aiCreds.deepseek_key %>" autocomplete="new-password"></label>
-        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.deepseek_base_url, t: t }) %>
-          <input type="text" name="deepseek_base_url" value="<%= aiCreds.deepseek_base_url %>" placeholder="https://api.deepseek.com/v1"></label>
-        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.deepseek_model, t: t }) %>
-          <input type="text" name="deepseek_model" value="<%= aiCreds.deepseek_model %>" placeholder="deepseek-chat"></label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
-      </div>
-    </fieldset>
-
-    <fieldset class="cred-group">
-      <legend>Kimi — priorité 2</legend>
-      <div class="form-row">
-        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.kimi_key, t: t }) %>
-          <input type="password" name="kimi_key" value="<%= aiCreds.kimi_key %>" autocomplete="new-password"></label>
-        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.kimi_base_url, t: t }) %>
-          <input type="text" name="kimi_base_url" value="<%= aiCreds.kimi_base_url %>" placeholder="https://api.moonshot.ai/v1"></label>
-        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.kimi_model, t: t }) %>
-          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="kimi-k2.6"></label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
-      </div>
-    </fieldset>
-
-    <p class="muted small">Les clés restent stockées localement dans la base du site et ne sont jamais affichées en clair ici.</p>
-    <div><button class="btn" type="submit">Enregistrer la configuration IA</button></div>
-  </form>
-</section>

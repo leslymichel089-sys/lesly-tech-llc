@@ -25,8 +25,22 @@
     <button class="btn" id="share-btn" data-url="<%= siteUrl %>" data-copied="<%= t('admin_share_copied') %>">
       <%= t('admin_share') %>
     </button>
+    <a class="btn btn-ghost" href="/admin/newsletter">Newsletter</a>
     <a class="btn btn-ghost" href="/admin/ai">Configuration IA</a>
     <a class="btn btn-ghost" href="/admin/notifications"><%= t('notif_nav') %></a>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <div class="section-head">
+    <h2>Test des clés API</h2>
+    <a class="btn btn-small btn-ghost" href="/admin/ai">Configurer les clés</a>
+  </div>
+  <p class="muted small">Vérifie DeepSeek et Kimi avec la configuration enregistrée. Aucune clé n'est affichée.</p>
+  <div id="api-test-result" class="alert" style="display:none" aria-live="polite"></div>
+  <div class="form-actions">
+    <button type="button" class="btn ai-test-dash" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
+    <button type="button" class="btn ai-test-dash" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
   </div>
 </section>
 
@@ -238,5 +252,51 @@
     </table>
   </div>
 </section>
+
+<script>
+(function () {
+  function showResult(result, isOk) {
+    var box = document.getElementById('api-test-result');
+    if (!box) return;
+    box.style.display = 'block';
+    box.className = 'alert ' + (isOk ? 'alert-ok' : 'alert-error');
+    box.textContent = result;
+  }
+
+  document.querySelectorAll('.ai-test-dash').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var provider = btn.getAttribute('data-provider');
+      showResult('Test en cours pour ' + provider + '…', true);
+      try {
+        var res = await fetch('/admin/ai/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: provider, _csrf: btn.getAttribute('data-csrf') })
+        });
+        var data = await res.json();
+        if (!data || !data.result) {
+          showResult('Réponse invalide du serveur.', false);
+          return;
+        }
+        var r = data.result;
+        var msg = data.provider + ' : ' + (r.ok ? 'clé valide' : 'échec') + '.';
+        if (r.latencyMs != null) msg += ' Latence ' + r.latencyMs + ' ms.';
+        if (Array.isArray(r.models) && r.models.length) {
+          msg += ' Modèles disponibles : ' + r.models.slice(0, 8).join(', ') + '.';
+        }
+        if (r.chatOk) {
+          msg += ' Appel chat OK.';
+        } else if (r.chatError) {
+          msg += ' Appel chat non confirmé : ' + r.chatError + '.';
+        }
+        if (r.error) msg += ' Détail : ' + r.error + '.';
+        showResult(msg, r.ok);
+      } catch (e) {
+        showResult('Erreur réseau : ' + e.message, false);
+      }
+    });
+  });
+})();
+</script>
 
 <%- include('../partials/footer') %>
