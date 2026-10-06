@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
   type TEXT NOT NULL DEFAULT 'autre',   -- app | ebook | autre
   desc_fr TEXT DEFAULT '', desc_en TEXT DEFAULT '',
   desc_ht TEXT DEFAULT '', desc_es TEXT DEFAULT '',
-  image TEXT DEFAULT '',                 -- chemin web, ex. /img/covers/viktor.webp
+  image TEXT DEFAULT '',                 -- chemin web, ex. /img/covers/viktor.jpg
   links TEXT DEFAULT '[]',               -- JSON [{label, url}]
   version TEXT DEFAULT '1.0',
   update_available INTEGER DEFAULT 0,
@@ -58,12 +58,12 @@ const setSetting = (k, v) => {
 
 // --- Seed : catalogue initial (une seule fois) ---
 const COVERS = {
-  'VIKTOR - AI Assistant': '/img/covers/viktor.webp',
+  'VIKTOR - AI Assistant': '/img/covers/viktor.jpg',
   'Komanse Lavi Ou Ozetazini': '/img/covers/komanse-lavi.jpg',
   'Koman-Pou-w-Vin-Sitwayen-Ameriken': '/img/covers/sitwayen-ameriken.jpg',
   "Comment réussir l'examen pour devenir citoyen américain : Étape par étape": '/img/covers/citoyen-americain-fr.jpg',
-  'Devenez interprète médical certifié en 7 semaines': '/img/covers/interprete-medical-fr.png',
-  'Tounen Entèprèt Medikal Sètifye nan 7 Semèn': '/img/covers/interprete-medical-ht.png',
+  'Devenez interprète médical certifié en 7 semaines': '/img/covers/interprete-medical-fr.jpg',
+  'Tounen Entèprèt Medikal Sètifye nan 7 Semèn': '/img/covers/interprete-medical-ht.jpg',
 };
 
 const countProducts = db.prepare('SELECT COUNT(*) AS n FROM products').get().n;
