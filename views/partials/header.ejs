@@ -57,6 +57,7 @@ try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentEle
       <a href="/contact" class="<%= page === 'contact' ? 'active' : '' %>"><%= t('nav_contact') %></a>
     </nav>
     <div class="header-tools">
+      <a class="admin-link<%= isAdmin ? ' is-on' : '' %>" href="/admin" title="<%= isAdmin ? 'Tableau de bord admin' : 'Connexion admin' %>"><%= isAdmin ? '⚙ Admin' : '🔒 Admin' %></a>
       <span class="tool">
         <span class="tool-label"><%= t('lang_label') %></span>
         <span class="lang-links">

@@ -499,3 +499,9 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
   .admin-fab { right: 12px; bottom: 12px; }
   .admin-fab-main { padding: .8em 1.1em; font-size: .9rem; }
 }
+
+/* Bouton Admin de l'en-tête */
+.admin-link { order: -1; white-space: nowrap; font-size: .82rem; font-weight: 800; padding: .45em .95em; border-radius: 999px;
+  border: 1.5px solid var(--line); color: var(--ink); background: var(--surface); text-decoration: none !important; transition: all var(--tr); }
+.admin-link:hover { border-color: var(--brand); color: var(--brand); }
+.admin-link.is-on { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: var(--on-brand); border-color: transparent; }
