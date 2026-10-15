@@ -11,6 +11,11 @@
 
 <% if (saved) { %><p class="alert alert-ok">Configuration IA enregistrée.</p><% } %>
 <div id="ai-test-result" class="alert" style="display:none" aria-live="polite"></div>
+<div id="ai-models" class="dash-panel" style="display:none">
+  <h2 id="ai-models-title">Modèles disponibles</h2>
+  <p class="muted small">Clique sur un modèle pour le mettre dans le champ « Modèle », puis enregistre.</p>
+  <div id="ai-models-list" class="model-list"></div>
+</div>
 
 <section class="dash-panel">
   <h2>État de la chaîne de secours</h2>
@@ -75,6 +80,26 @@
     box.textContent = result;
     box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+  // Liste complète des modèles, cliquables : remplit le champ « Modèle » du fournisseur.
+  function showModels(provider, models, current) {
+    var box = document.getElementById('ai-models'), list = document.getElementById('ai-models-list');
+    list.innerHTML = '';
+    if (!models.length) { box.style.display = 'none'; return; }
+    document.getElementById('ai-models-title').textContent = models.length + ' modèle(s) disponible(s) chez ' + provider;
+    models.slice().sort().forEach(function (m) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'model-pill' + (m === current ? ' is-current' : ''); b.textContent = m;
+      b.addEventListener('click', function () {
+        var input = document.querySelector('[name="' + provider + '_model"]');
+        input.value = m;
+        input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        list.querySelectorAll('.model-pill').forEach(function (x) { x.classList.toggle('is-current', x === b); });
+      });
+      list.appendChild(b);
+    });
+    box.style.display = 'block';
+  }
+
   document.querySelectorAll('.ai-test').forEach(function (btn) {
     btn.addEventListener('click', async function () {
       var provider = btn.getAttribute('data-provider');
@@ -92,11 +117,12 @@
         if (r.chatOk && r.sample) msg += ' Réponse : « ' + r.sample + ' ».';
         if (r.error) msg += ' Détail : ' + r.error + '.';
         if (r.models && r.models.length && !r.modelKnown) {
-          msg += ' ⚠ Le modèle « ' + r.model + ' » n\'est pas dans la liste du fournisseur. Modèles disponibles : ' + r.models.slice(0, 12).join(', ') + '.';
-        } else if (!r.ok && r.models && r.models.length) {
-          msg += ' Modèles disponibles : ' + r.models.slice(0, 12).join(', ') + '.';
+          msg += r.ok
+            ? ' ℹ « ' + r.model + ' » fonctionne, mais n\'apparaît plus dans la liste officielle (ancien nom) : tu peux garder ce modèle ou en choisir un ci-dessous.'
+            : ' ⚠ Le modèle « ' + r.model + ' » n\'est pas proposé par ce fournisseur : choisis-en un dans la liste ci-dessous, puis enregistre.';
         }
         showResult(msg, r.ok);
+        showModels(provider, r.models || [], r.model);
       } catch (e) {
         showResult('Erreur réseau : ' + e.message, false);
       }

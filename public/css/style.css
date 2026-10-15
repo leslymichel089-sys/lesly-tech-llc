@@ -589,3 +589,10 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
 .auth-consent { text-align: left; font-size: .85rem; margin: 14px 0; align-items: flex-start; }
 .google-btn { display: flex; justify-content: center; min-height: 44px; margin: 6px 0 10px; }
 .auth-anon { width: 100%; margin-bottom: 8px; }
+
+/* Liste des modèles IA cliquables */
+.model-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.model-pill { font: inherit; font-size: .82rem; font-family: ui-monospace, Consolas, monospace; padding: .4em .8em; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.model-pill:hover { border-color: var(--brand); color: var(--brand); }
+.model-pill.is-current { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: var(--on-brand); border-color: transparent; }

@@ -21,7 +21,7 @@ const PROVIDERS = [
     env: 'OPENAI', help: 'platform.openai.com → API keys' },
   { id: 'gemini', name: 'Google Gemini', kind: 'openai', vision: true, base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash',
     env: 'GEMINI', help: 'aistudio.google.com → Get API key' },
-  { id: 'groq', name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile',
+  { id: 'groq', name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-120b',
     env: 'GROQ', help: 'console.groq.com → API Keys' },
   { id: 'openrouter', name: 'OpenRouter', kind: 'openai', vision: true, base: 'https://openrouter.ai/api/v1', model: 'openrouter/auto',
     env: 'OPENROUTER', help: 'openrouter.ai → Keys' },
