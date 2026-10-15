@@ -36,6 +36,24 @@ function catalogue(lang) {
   }).join('\n');
 }
 
+// Détection simple de la langue d'un message (mots fréquents). Repli : langue du site.
+const LANG_WORDS = {
+  ht: ['mwen', 'ou', 'pou', 'yon', 'nan', 'ki', 'kijan', 'konbyen', 'mèsi', 'bonjou', 'liv', 'vle', 'gen', 'kote', 'tanpri', 'kòman', 'poukisa', 'sa', 'w', 'li', 'nou', 'yo', 'pa', 'ak', 'fè'],
+  fr: ['je', 'tu', 'vous', 'pour', 'un', 'une', 'le', 'la', 'les', 'des', 'est', 'merci', 'bonjour', 'livre', 'veux', 'cherche', 'comment', 'combien', 'quel', 'quelle', 'mon', 'mes', 'mes', 'avec', 'pas', 'plaît', 'fichier'],
+  en: ['i', 'you', 'the', 'a', 'is', 'for', 'my', 'want', 'book', 'hello', 'hi', 'thanks', 'how', 'what', 'which', 'need', 'please', 'with', 'about', 'can'],
+  es: ['yo', 'tú', 'usted', 'el', 'los', 'las', 'una', 'para', 'quiero', 'libro', 'hola', 'gracias', 'cómo', 'cuánto', 'qué', 'necesito', 'por', 'favor', 'mis', 'busco'],
+};
+function detectLang(text, fallback) {
+  const words = String(text || '').toLowerCase().normalize('NFC').match(/[\p{L}']+/gu) || [];
+  if (words.length < 2) return fallback;
+  let best = fallback, bestScore = 0;
+  for (const [l, list] of Object.entries(LANG_WORDS)) {
+    const score = words.filter((w) => list.includes(w)).length;
+    if (score > bestScore) { best = l; bestScore = score; }
+  }
+  return bestScore >= 1 ? best : fallback;
+}
+
 function systemPrompt(lang, contactEmail, publisherEmail) {
   return `Tu es l'assistant virtuel officiel du site de Lesly Tech LLC et de sa maison d'édition Les Éditions LeVent (fondateur : Lesly Michel).
 Ton rôle : accueillir chaleureusement les visiteurs, comprendre ce qu'ils cherchent et les guider vers la bonne création du catalogue.
@@ -130,7 +148,10 @@ function register(app, { contactEmail, publisherEmail, requireLogin }) {
     ins.run(conv, 'user', (message || '(fichier joint)') + att.trace, lang, ip, '', vid);
 
     try {
-      const system = systemPrompt(lang, contactEmail, publisherEmail) + (req.session.visitorName
+      const replyLang = detectLang(message, lang);
+      const system = systemPrompt(lang, contactEmail, publisherEmail) +
+        `\n\nLANGUE DE RÉPONSE OBLIGATOIRE pour ce message : ${LANG_NAMES[replyLang]}. Toute ta réponse, y compris la salutation, doit être dans cette langue.` +
+        (req.session.visitorName
         ? `\n\nLe visiteur est connecté avec Google : il s'appelle ${String(req.session.visitorName).slice(0, 60)}. Tu peux l'appeler par son prénom.` : '');
       const userMsg = { role: 'user', content: (message || 'Voici un fichier.') + att.forAi, images: att.images };
       let r;
