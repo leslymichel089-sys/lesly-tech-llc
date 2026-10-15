@@ -336,6 +336,52 @@ if (getSetting('catalog_sync_v3') !== '1') {
   setSetting('catalog_sync_v3', '1');
 }
 
+// --- Liens de vente officiels (Amazon KDP, Payhip, Gumroad, Shopify) — exécuté une seule fois ---
+// Les liens listés ici passent en premier ; les autres liens déjà saisis dans l'admin sont conservés.
+if (getSetting('links_sync_v4') !== '1') {
+  const AMZ = (asin) => ({ label: 'Amazon Kindle', url: `https://www.amazon.com/dp/${asin}` });
+  const PH = (id) => ({ label: 'Payhip', url: `https://payhip.com/b/${id}` });
+  const GR = (slug) => ({ label: 'Gumroad', url: `https://leslymichel.gumroad.com/l/${slug}` });
+  const SH = (handle, label = 'Shopify') => ({ label, url: `https://leslymgenesis.com/products/${handle}` });
+  const LINKS = {
+    'Komanse Lavi Ou Ozetazini': [AMZ('B0HMBNHMQX'), PH('18B4I'), GR('komanse-lavi-ou-ozetazini'), SH('komanse-lavi-ou-ozetazini-gid-pratik-pou-moun-ki-fek-rive')],
+    'Koman-Pou-w-Vin-Sitwayen-Ameriken': [PH('9Ohzm'), GR('womegb'), SH('koman-pou-w-pase-egzamen-pou-w-vin-sitwayen-ameriken-etap-pa-etap')],
+    "Comment réussir l'examen pour devenir citoyen américain : Étape par étape": [AMZ('B0HBD6GC9H'), PH('V9nAs'), GR('spiqtr'), SH('comment-reussir-lexamen-pour-devenir-citoyen-americain-etape-par-etape')],
+    'Devenez interprète médical certifié en 7 semaines': [AMZ('B0HMQZ1KWB'), PH('57UM6'), GR('devenez-interprete-medical-certifie-en-7-semaines'), SH('devenez-interprete-medical-certifie-en-7-semaines')],
+    'Tounen Entèprèt Medikal Sètifye nan 7 Semèn': [PH('DOG2k'), GR('oewlksk'), SH('tounen-entepret-medikal-setifye-nan-7-semen')],
+    'Prime Again': [AMZ('B0HMPXT94D'), PH('ZuFkJ'), SH('prime-again-the-10-lesson-blueprint-to-reclaim-your-virility-energy-confidence-after-50')],
+    'Suis-je la carte bancaire de mon entourage ?': [PH('Ok4Cm'), SH('suis-je-la-carte-bancaire-de-mon-entourage')],
+    'Lè Yon Moun Mouri Lòtbò': [PH('1F6gA'), SH('le-yon-moun-mouri-lotbo-ebook'),
+      SH('le-yon-moun-mouri-lotbo-pack-fanmi', 'Pack Fanmi (Shopify)'), SH('le-yon-moun-mouri-lotbo-lisans-oganizasyon', 'Lisans Òganizasyon (Shopify)')],
+    "L'Anglais Quotidien aux USA": [PH('mB27q'), GR('wjhnb'), SH('langlais-quotidien-aux-usa-savoir-cest-pouvoir')],
+    'Bouki et Malice': [PH('EhOZy'), GR('msvyw'), SH('bouki-et-malice')],
+    'Pack 7 Ebooks — Les Éditions LeVent': [GR('thlqrk'), SH('pack-7-ebooks-les-editions-levent')],
+  };
+  // Nouveau produit : le pack 7 ebooks (Gumroad + Shopify).
+  if (!db.prepare('SELECT 1 FROM products WHERE title = ?').get('Pack 7 Ebooks — Les Éditions LeVent')) {
+    db.prepare(`INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, links, version)
+      VALUES (@title, 'ebook', @desc_fr, @desc_en, @desc_ht, @desc_es, '/img/levent-logo.jpg', '[]', '1.0')`).run({
+      title: 'Pack 7 Ebooks — Les Éditions LeVent',
+      desc_fr: 'Le pack de 7 ebooks des Éditions LeVent à prix réduit : guides pratiques pour réussir aux États-Unis, citoyenneté, interprétariat médical et plus. 49,99 $US.',
+      desc_en: 'Les Éditions LeVent 7-ebook bundle at a discounted price: practical guides to succeed in the U.S., citizenship, medical interpreting and more. US$49.99.',
+      desc_ht: 'Pake 7 ebook Les Éditions LeVent a pri redwi : gid pratik pou reyisi Ozetazini, sitwayènte, entèpretasyon medikal ak plis ankò. 49,99 $US.',
+      desc_es: 'Paquete de 7 ebooks de Les Éditions LeVent a precio reducido: guías prácticas para triunfar en EE. UU., ciudadanía, interpretación médica y más. 49,99 US$.',
+    });
+  }
+  const upd = db.prepare('UPDATE products SET links = ? WHERE id = ?');
+  for (const r of db.prepare('SELECT id, title, links FROM products').all()) {
+    const official = LINKS[r.title];
+    if (!official) continue;
+    let current = [];
+    try { current = JSON.parse(r.links || '[]'); } catch (e) {}
+    const labels = new Set(official.map((l) => l.label));
+    const urls = new Set(official.map((l) => l.url));
+    const kept = current.filter((l) => !urls.has(l.url) && !labels.has(l.label));
+    upd.run(JSON.stringify([...official, ...kept]), r.id);
+  }
+  setSetting('links_sync_v4', '1');
+}
+
 // --- Helpers ---
 function rowToProduct(r) {
   let links = [];
