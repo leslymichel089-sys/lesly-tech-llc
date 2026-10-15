@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Rapport quotidien</h1>
+  <p class="muted">Chaque jour à l'heure choisie, le site t'envoie un rapport complet par e-mail et un résumé court sur Telegram, WhatsApp et SMS
+    (canaux configurés dans Notifications). Aperçu du rapport en ce moment ci-dessous.</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <a class="btn btn-small btn-ghost" href="/admin/notifications">Notifications</a>
+  </div>
+</section>
+
+<% if (sent) { %>
+  <p class="alert <%= sent.ok ? 'alert-ok' : 'alert-error' %>"><%= sent.ok ? 'Rapport envoyé ✔' : 'Envoi incomplet : ' + sent.detail %></p>
+<% } %>
+<% if (saved) { %><p class="alert alert-ok">Réglages enregistrés.</p><% } %>
+
+<section class="dash-panel">
+  <h2>Réglages</h2>
+  <form method="post" action="/admin/rapport/settings" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-row">
+      <label>Heure d'envoi
+        <select name="report_hour">
+          <% for (var h = 0; h < 24; h++) { %><option value="<%= h %>" <%= settings.hour === h ? 'selected' : '' %>><%= h %> h 00</option><% } %>
+        </select></label>
+      <label>Fuseau horaire
+        <select name="report_tz">
+          <% ['America/New_York', 'America/Port-au-Prince', 'America/Chicago', 'America/Los_Angeles', 'Europe/Paris', 'UTC'].forEach(function (z) { %>
+            <option value="<%= z %>" <%= settings.tz === z ? 'selected' : '' %>><%= z %></option>
+          <% }) %>
+        </select></label>
+      <label class="check-row"><input type="checkbox" name="report_enabled" <%= settings.enabled ? 'checked' : '' %>> Rapport activé</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Enregistrer</button>
+    </div>
+  </form>
+  <form method="post" action="/admin/rapport/send" class="inline-form" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn btn-ghost" type="submit">Envoyer le rapport maintenant</button>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2>Aperçu (e-mail)</h2>
+  <div class="report-preview"><%- report.html %></div>
+  <h3 style="margin-top:18px">Résumé court (Telegram / WhatsApp / SMS)</h3>
+  <pre class="report-short"><%= report.short %></pre>
+</section>
+
+<%- include('../partials/footer') %>

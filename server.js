@@ -15,6 +15,10 @@ const watchdog = require('./watchdog');
 const notify = require('./notify');
 const SqliteStore = require('./session-store');
 const publish = require('./publish');
+const webhooks = require('./webhooks');
+const monitor = require('./monitor');
+const report = require('./report');
+const assistant = require('./assistant');
 
 // Les couvertures sont versionnées en base64 (*.jpg.b64) car certains modes de
 // déploiement ne transportent pas le binaire. On les restaure en .jpg au démarrage.
@@ -71,7 +75,8 @@ app.disable('x-powered-by');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadDir));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
-app.use(express.json({ limit: '2mb' }));
+// rawBody conservé pour vérifier la signature HMAC des webhooks Shopify.
+app.use(express.json({ limit: '2mb', verify: (req, res, buf) => { if (req.path.startsWith('/webhooks/')) req.rawBody = buf; } }));
 
 if (!process.env.SESSION_SECRET) {
   console.warn('[sécurité] SESSION_SECRET non défini : secret par défaut utilisé. À définir avant toute mise en ligne.');
@@ -190,12 +195,13 @@ app.use((req, res, next) => {
   res.locals.contactEmail = process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com';
   res.locals.publisherEmail = process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com';
   res.locals.currentPath = req.path;
+  res.locals.chatEnabled = dbm.getSetting('chat_enabled') !== '0';
   next();
 });
 
 // ---------- Page de maintenance (site désactivé ; l'admin reste accessible) ----------
 app.use((req, res, next) => {
-  if (req.path.startsWith('/admin') || req.path.startsWith('/lang')) return next();
+  if (req.path.startsWith('/admin') || req.path.startsWith('/lang') || req.path.startsWith('/webhooks/')) return next();
   if (dbm.getSetting('site_enabled') === '0') {
     return res.status(503).render('maintenance', { page: 'maintenance' });
   }
@@ -714,15 +720,8 @@ app.post('/admin/ai/generate', requireLogin, async (req, res) => {
   }
 });
 
-// ---------- Admin : configuration IA (DeepSeek -> Kimi -> secours) ----------
-const AI_FIELDS = [
-  ['deepseek_key', 'DEEPSEEK_API_KEY', 'ai_deepseek_key', true],
-  ['deepseek_base_url', 'DEEPSEEK_BASE_URL', 'ai_deepseek_base_url'],
-  ['deepseek_model', 'DEEPSEEK_MODEL', 'ai_deepseek_model'],
-  ['kimi_key', 'KIMI_API_KEY', 'ai_kimi_key', true],
-  ['kimi_base_url', 'KIMI_BASE_URL', 'ai_kimi_base_url'],
-  ['kimi_model', 'KIMI_MODEL', 'ai_kimi_model'],
-];
+// ---------- Admin : configuration IA (DeepSeek d'abord, puis bascule automatique) ----------
+const AI_FIELDS = ai.FIELDS;
 
 function aiSourceOf(envName, dbKey) {
   if (process.env[envName]) return 'env';
@@ -735,9 +734,9 @@ function aiPageData() {
   for (const [form, envName, dbKey, secret] of AI_FIELDS) {
     credSrc[form] = aiSourceOf(envName, dbKey);
     const v = dbm.getSetting(dbKey) || '';
-    creds[form] = secret ? (v ? MASK : '') : v;
+    creds[form] = secret ? (v || process.env[envName] ? MASK : '') : v;
   }
-  return { aiCreds: creds, aiCredSrc: credSrc };
+  return { aiCreds: creds, aiCredSrc: credSrc, aiProviders: ai.PROVIDERS, aiStatus: ai.status() };
 }
 
 app.get('/admin/ai', requireLogin, (req, res) => {
@@ -748,6 +747,7 @@ app.post('/admin/ai/credentials', requireLogin, (req, res) => {
   for (const [form, envName, dbKey] of AI_FIELDS) {
     const v = String(req.body[form] || '').trim();
     if (v && v !== MASK) dbm.setSetting(dbKey, v);
+    if (req.body[form + '_clear']) dbm.setSetting(dbKey, '');
   }
   if (String(req.body.return_to || '') === '/admin') {
     return res.redirect('/admin?ai=saved');
@@ -755,39 +755,10 @@ app.post('/admin/ai/credentials', requireLogin, (req, res) => {
   res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: true });
 });
 
-function aiEffectiveConfig(provider, body = {}) {
-  const p = provider === 'kimi' ? 'kimi' : 'deepseek';
-  const env = p === 'kimi'
-    ? { key: 'KIMI_API_KEY', base: 'KIMI_BASE_URL', model: 'KIMI_MODEL' }
-    : { key: 'DEEPSEEK_API_KEY', base: 'DEEPSEEK_BASE_URL', model: 'DEEPSEEK_MODEL' };
-  const dbKey = p === 'kimi'
-    ? { key: 'ai_kimi_key', base: 'ai_kimi_base_url', model: 'ai_kimi_model' }
-    : { key: 'ai_deepseek_key', base: 'ai_deepseek_base_url', model: 'ai_deepseek_model' };
-  const fallback = p === 'kimi'
-    ? { key: '', base: 'https://api.moonshot.ai/v1', model: 'kimi-k2.6' }
-    : { key: '', base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' };
-
-  const submittedKey = String(body[`${p}_key`] || '').trim();
-  const apiKey = submittedKey && submittedKey !== MASK
-    ? submittedKey
-    : (process.env[env.key] || dbm.getSetting(dbKey.key) || fallback.key);
-  const baseUrl = String(body[`${p}_base_url`] || '').trim()
-    || process.env[env.base]
-    || dbm.getSetting(dbKey.base)
-    || fallback.base;
-  const model = String(body[`${p}_model`] || '').trim()
-    || process.env[env.model]
-    || dbm.getSetting(dbKey.model)
-    || fallback.model;
-
-  return { provider: p, apiKey, baseUrl, model };
-}
-
 app.post('/admin/ai/test', requireLogin, async (req, res) => {
-  const provider = ['deepseek', 'kimi'].includes(String(req.body.provider || '')) ? req.body.provider : 'deepseek';
-  const cfg = aiEffectiveConfig(provider, req.body);
+  const provider = ai.PROVIDERS.some((p) => p.id === req.body.provider) ? req.body.provider : 'deepseek';
   try {
-    const result = await ai.testProviderConfig(cfg);
+    const result = await ai.testProvider(provider, req.body);
     res.json({ ok: result.ok, provider, result });
   } catch (e) {
     res.json({ ok: false, provider, result: { ok: false, error: e.message, models: [], chatOk: false } });
@@ -809,6 +780,67 @@ app.get('/admin/newsletter.csv', requireLogin, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="newsletter-lesly-tech-llc.csv"');
   res.send('\ufeff' + csv);
 });
+// ---------- Ventes : webhooks + page admin ----------
+webhooks.register(app);
+app.get('/admin/ventes', requireLogin, (req, res) => {
+  const sales = dbm.listSales();
+  const total = sales.filter((s) => s.kind === 'sale').reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+  res.render('admin/ventes', { page: 'admin', sales, total, urls: webhooks.webhookUrls(SITE_URL) });
+});
+app.post('/admin/ventes/test', requireLogin, async (req, res) => {
+  await webhooks.record({ platform: 'test', external_id: 'test-' + Date.now(), kind: 'test',
+    product: 'Vente de test (aucun argent réel)', amount: 9.99, currency: 'USD', buyer: '' });
+  res.redirect('/admin/ventes?test=1');
+});
+
+// ---------- Assistant IA des visiteurs ----------
+assistant.register(app, {
+  contactEmail: process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com',
+  publisherEmail: process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com',
+});
+app.get('/admin/conversations', requireLogin, (req, res) => {
+  res.render('admin/conversations', {
+    page: 'admin', convs: assistant.conversations(),
+    chatEnabled: dbm.getSetting('chat_enabled') !== '0',
+    chatCap: dbm.getSetting('chat_daily_cap') || '400', saved: req.query.saved === '1',
+  });
+});
+app.post('/admin/conversations/settings', requireLogin, (req, res) => {
+  dbm.setSetting('chat_enabled', req.body.chat_enabled ? '1' : '0');
+  const cap = parseInt(req.body.chat_daily_cap, 10);
+  if (cap >= 0 && cap <= 100000) dbm.setSetting('chat_daily_cap', String(cap));
+  res.redirect('/admin/conversations?saved=1');
+});
+
+// ---------- Rapport quotidien ----------
+app.get('/admin/rapport', requireLogin, async (req, res, next) => {
+  try {
+    const r = await report.build();
+    let sent = null;
+    if (req.query.sent) sent = { ok: req.query.sent === '1', detail: String(req.query.detail || '') };
+    res.render('admin/rapport', { page: 'admin', report: r, settings: report.settings(), sent, saved: req.query.saved === '1' });
+  } catch (e) { next(e); }
+});
+app.post('/admin/rapport/settings', requireLogin, (req, res) => {
+  const h = parseInt(req.body.report_hour, 10);
+  if (h >= 0 && h <= 23) dbm.setSetting('report_hour', String(h));
+  if (/^[A-Za-z_]+(\/[A-Za-z_-]+)?$/.test(String(req.body.report_tz || ''))) dbm.setSetting('report_tz', req.body.report_tz);
+  dbm.setSetting('report_enabled', req.body.report_enabled ? '1' : '0');
+  res.redirect('/admin/rapport?saved=1');
+});
+app.post('/admin/rapport/send', requireLogin, async (req, res) => {
+  try {
+    const r = await report.send();
+    const ok = !!(r.result && r.result.ok);
+    const detail = r.result && r.result.reason === 'no_channel' ? 'aucun canal configuré (Notifications)'
+      : r.result && r.result.reason === 'disabled' ? 'alerte « Rapport quotidien » désactivée dans Notifications'
+      : (r.result && r.result.failed || []).map((f) => f.channel + ' : ' + f.detail).join(' ; ');
+    res.redirect('/admin/rapport?sent=' + (ok ? '1' : '0') + '&detail=' + encodeURIComponent(detail.slice(0, 300)));
+  } catch (e) {
+    res.redirect('/admin/rapport?sent=0&detail=' + encodeURIComponent(e.message.slice(0, 200)));
+  }
+});
+
 // ---------- Admin : messages du formulaire de contact ----------
 app.get('/admin/messages', requireLogin, (req, res) => {
   res.render('admin/messages', {
@@ -819,6 +851,10 @@ app.get('/admin/messages', requireLogin, (req, res) => {
 });
 // ---------- Admin : notifications / watchdog ----------
 const CRED_FIELDS = [
+  ['resend_key', 'RESEND_API_KEY', 'notif_resend_key', true],
+  ['resend_from', 'RESEND_FROM', 'notif_resend_from'],
+  ['sms_from', 'TWILIO_SMS_FROM', 'notif_sms_from'],
+  ['sms_to', 'SMS_TO', 'notif_sms_to'],
   ['smtp_host', 'SMTP_HOST', 'notif_smtp_host'],
   ['smtp_port', 'SMTP_PORT', 'notif_smtp_port'],
   ['smtp_user', 'SMTP_USER', 'notif_smtp_user'],
@@ -885,6 +921,7 @@ app.post('/admin/notifications/test', requireLogin, async (req, res) => {
 // ---------- Erreurs -> alerte watchdog ----------
 app.use((err, req, res, next) => {
   console.error('[erreur]', err && err.stack ? err.stack : err);
+  try { dbm.logError(`${req.method} ${req.path} : ${(err && err.message) || err}`); } catch (e) {}
   watchdog.fire('server_error', 'Erreur serveur',
     `${req.method} ${req.path} : ${(err && err.message) || err}`.slice(0, 500)).catch(() => {});
   res.status(500).send('Erreur interne du serveur.');
@@ -894,5 +931,7 @@ app.use((err, req, res, next) => {
 app.use((req, res) => res.status(404).render('404', { page: '' }));
 
 app.listen(PORT, () => {
+  monitor.start();
+  report.start();
   console.log(`[site] Lesly Tech LLC v2 en ligne sur ${SITE_URL}`);
 });

@@ -1,257 +1,244 @@
-// ai.js — routeur IA avec bascule automatique.
-// Ordre de priorité : 1) DeepSeek, 2) Kimi, 3) providers génériques, 4) OmniRoute si configuré.
-// Les clés peuvent venir des variables d'environnement (prioritaires)
-// ou de la page admin /admin/ai (stockées en base locale).
+// ai.js — routeur IA avec bascule automatique sur TOUS les fournisseurs configurés.
+//
+// Ordre (charte Lesly Tech LLC) : DeepSeek d'abord, puis Kimi, Anthropic, OpenAI,
+// Gemini, Groq, OpenRouter, Mistral, puis les providers génériques et OmniRoute.
+// Un fournisseur n'est tenté que si sa clé existe (variable d'environnement prioritaire,
+// sinon valeur saisie dans /admin/ai). Un fournisseur qui échoue plusieurs fois de suite
+// est mis « en pause » quelques minutes pour ne pas ralentir les visiteurs.
 const dbm = require('./db');
+
+const TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '45000', 10);
+
+// Registre des fournisseurs (ordre = priorité).
+const PROVIDERS = [
+  { id: 'deepseek', name: 'DeepSeek', kind: 'openai', base: 'https://api.deepseek.com/v1', model: 'deepseek-chat',
+    env: 'DEEPSEEK', help: 'platform.deepseek.com → API keys' },
+  { id: 'kimi', name: 'Kimi (Moonshot)', kind: 'openai', base: 'https://api.moonshot.ai/v1', model: 'kimi-k2.6',
+    env: 'KIMI', help: 'platform.moonshot.ai → API Keys' },
+  { id: 'anthropic', name: 'Anthropic (Claude)', kind: 'anthropic', base: 'https://api.anthropic.com/v1', model: 'claude-haiku-5-5',
+    env: 'ANTHROPIC', help: 'console.anthropic.com → API Keys' },
+  { id: 'openai', name: 'OpenAI', kind: 'openai', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini',
+    env: 'OPENAI', help: 'platform.openai.com → API keys' },
+  { id: 'gemini', name: 'Google Gemini', kind: 'openai', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash',
+    env: 'GEMINI', help: 'aistudio.google.com → Get API key' },
+  { id: 'groq', name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile',
+    env: 'GROQ', help: 'console.groq.com → API Keys' },
+  { id: 'openrouter', name: 'OpenRouter', kind: 'openai', base: 'https://openrouter.ai/api/v1', model: 'openrouter/auto',
+    env: 'OPENROUTER', help: 'openrouter.ai → Keys' },
+  { id: 'mistral', name: 'Mistral', kind: 'openai', base: 'https://api.mistral.ai/v1', model: 'mistral-small-latest',
+    env: 'MISTRAL', help: 'console.mistral.ai → API Keys' },
+];
+
+// Champs administrables : [nom du champ de formulaire, variable d'env, clé en base, secret ?]
+const FIELDS = [];
+for (const p of PROVIDERS) {
+  FIELDS.push([`${p.id}_key`, `${p.env}_API_KEY`, `ai_${p.id}_key`, true]);
+  FIELDS.push([`${p.id}_base_url`, `${p.env}_BASE_URL`, `ai_${p.id}_base_url`]);
+  FIELDS.push([`${p.id}_model`, `${p.env}_MODEL`, `ai_${p.id}_model`]);
+}
 
 function getConfig(dbKey, envKey, fallback = '') {
   if (process.env[envKey]) return process.env[envKey];
-  const value = dbm.getSetting(dbKey);
-  return value || fallback;
+  return dbm.getSetting(dbKey) || fallback;
 }
 
-const TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '60000', 10);
+function providerConfig(p) {
+  return {
+    ...p,
+    apiKey: getConfig(`ai_${p.id}_key`, `${p.env}_API_KEY`),
+    baseUrl: (getConfig(`ai_${p.id}_base_url`, `${p.env}_BASE_URL`, p.base) || p.base).replace(/\/$/, ''),
+    model: getConfig(`ai_${p.id}_model`, `${p.env}_MODEL`, p.model) || p.model,
+  };
+}
 
-const DEEPSEEK_BASE_URL = (getConfig('ai_deepseek_base_url', 'DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1') || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-const DEEPSEEK_API_KEY = getConfig('ai_deepseek_key', 'DEEPSEEK_API_KEY');
-const DEEPSEEK_MODEL = getConfig('ai_deepseek_model', 'DEEPSEEK_MODEL', 'deepseek-chat');
-
-const KIMI_BASE_URL = (getConfig('ai_kimi_base_url', 'KIMI_BASE_URL', 'https://api.moonshot.ai/v1') || 'https://api.moonshot.ai/v1').replace(/\/$/, '');
-const KIMI_API_KEY = getConfig('ai_kimi_key', 'KIMI_API_KEY');
-const KIMI_MODEL = getConfig('ai_kimi_model', 'KIMI_MODEL', 'kimi-k2.6');
-
-const OMNIROUTE_URL = (process.env.OMNIROUTE_URL || '').replace(/\/$/, '');
-const OMNIROUTE_MODEL = process.env.OMNIROUTE_MODEL || 'auto';
-const OMNIROUTE_API_KEY = process.env.OMNIROUTE_API_KEY || '';
+// ---------- Santé des fournisseurs (mémoire) ----------
+const health = {}; // id -> { ok, fails, lastError, lastOk, lastFail, pausedUntil, calls }
+function h(id) { return (health[id] = health[id] || { ok: null, fails: 0, calls: 0 }); }
+function markOk(id) { const s = h(id); s.ok = true; s.fails = 0; s.lastOk = Date.now(); s.pausedUntil = 0; s.calls++; }
+function markFail(id, err) {
+  const s = h(id); s.ok = false; s.fails++; s.lastFail = Date.now(); s.lastError = String(err).slice(0, 200); s.calls++;
+  if (s.fails >= 3) s.pausedUntil = Date.now() + 10 * 60 * 1000; // pause 10 min après 3 échecs
+}
 
 let eventHandler = null;
 function onEvent(fn) { eventHandler = fn; }
-function emit(ev) {
-  if (eventHandler) { try { eventHandler(ev); } catch (e) {} }
-}
+function emit(ev) { if (eventHandler) { try { eventHandler(ev); } catch (e) {} } }
 
-const SYSTEM_BY_LANG = {
-  fr: 'Réponds en français.',
-  en: 'Reply in English.',
-  ht: 'Reponn an kreyòl ayisyen.',
-  es: 'Responde en español.',
-};
-
-async function postJson(url, body, key) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(key ? { Authorization: `Bearer ${key}` } : {}),
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      let detail = '';
-      try { detail = await res.text(); } catch (e) {}
-      throw new Error(`HTTP ${res.status}${detail ? ` ${detail.slice(0, 160)}` : ''}`);
-    }
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
+// ---------- Appels HTTP ----------
+async function requestJson(url, { method = 'POST', headers = {}, body } = {}) {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch (e) {}
+  if (!res.ok) {
+    const detail = (json && (json.error && (json.error.message || json.error.type) || json.message)) || text;
+    throw new Error(`HTTP ${res.status}${detail ? ' ' + String(detail).slice(0, 160) : ''}`);
   }
+  return json;
 }
 
-async function callOpenAICompatible(baseUrl, apiKey, model, prompt, lang) {
-  const data = await postJson(
-    `${baseUrl}/chat/completions`,
-    {
-      model,
-      messages: [
-        { role: 'system', content: SYSTEM_BY_LANG[lang] || SYSTEM_BY_LANG.fr },
-        { role: 'user', content: prompt },
-      ],
+// messages : [{ role: 'user'|'assistant', content }], system : texte.
+async function callProvider(cfg, { system, messages, maxTokens = 700, temperature = 0.6 }) {
+  if (cfg.kind === 'anthropic') {
+    const data = await requestJson(`${cfg.baseUrl}/messages`, {
+      headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' },
+      body: { model: cfg.model, max_tokens: maxTokens, temperature, system: system || undefined, messages },
+    });
+    const text = (data && Array.isArray(data.content) ? data.content : [])
+      .filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+    if (!text.trim()) throw new Error('réponse vide');
+    return text.trim();
+  }
+  const headers = { Authorization: `Bearer ${cfg.apiKey}` };
+  if (cfg.id === 'openrouter') { headers['HTTP-Referer'] = process.env.SITE_URL || 'https://lesly-tech-llc.onrender.com'; headers['X-Title'] = 'Lesly Tech LLC'; }
+  const data = await requestJson(`${cfg.baseUrl}/chat/completions`, {
+    headers,
+    body: {
+      model: cfg.model,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages],
+      max_tokens: maxTokens,
+      temperature,
     },
-    apiKey
-  );
+  });
   const msg = data && data.choices && data.choices[0] && data.choices[0].message;
   const text = msg && (msg.content || msg.reasoning_content);
   if (!text || !String(text).trim()) throw new Error('réponse vide ou invalide');
   return String(text).trim();
 }
 
-function genericProvidersFromEnv() {
+// Providers génériques ({prompt, lang} -> {text}) et OmniRoute, gardés pour compatibilité.
+function extraProviders() {
   const list = [];
   for (let i = 1; i <= 5; i++) {
     const url = process.env[`AI_PROVIDER_${i}_URL`];
-    if (url) {
-      list.push({
-        n: i,
-        url,
-        key: process.env[`AI_PROVIDER_${i}_KEY`] || '',
-        model: process.env[`AI_PROVIDER_${i}_MODEL`] || '',
-      });
-    }
+    if (!url) continue;
+    const key = process.env[`AI_PROVIDER_${i}_KEY`] || '';
+    const model = process.env[`AI_PROVIDER_${i}_MODEL`] || '';
+    list.push({
+      id: `provider${i}`, name: `Provider ${i}`,
+      run: async ({ system, messages }) => {
+        const prompt = [system, ...messages.map((m) => `${m.role}: ${m.content}`)].filter(Boolean).join('\n\n');
+        const data = await requestJson(url, { headers: key ? { Authorization: `Bearer ${key}` } : {}, body: { prompt, ...(model ? { model } : {}) } });
+        if (!data || typeof data.text !== 'string' || !data.text.trim()) throw new Error('champ "text" manquant');
+        return data.text.trim();
+      },
+    });
+  }
+  const omni = (process.env.OMNIROUTE_URL || '').replace(/\/$/, '');
+  if (omni) {
+    const cfg = { id: 'omniroute', kind: 'openai', baseUrl: omni, apiKey: process.env.OMNIROUTE_API_KEY || '', model: process.env.OMNIROUTE_MODEL || 'auto' };
+    list.push({ id: 'omniroute', name: 'OmniRoute', run: (opts) => callProvider(cfg, opts) });
   }
   return list;
 }
 
-async function callGeneric(p, prompt, lang) {
-  const data = await postJson(p.url, {
-    prompt, lang, ...(p.model ? { model: p.model } : {}),
-  }, p.key);
-  if (!data || typeof data.text !== 'string' || !data.text.trim()) {
-    throw new Error('réponse invalide (champ "text" manquant)');
-  }
-  return data.text.trim();
+// Liste ordonnée des fournisseurs utilisables maintenant.
+function activeChain() {
+  const chain = PROVIDERS.map(providerConfig).filter((c) => c.apiKey)
+    .map((c) => ({ id: c.id, name: c.name, model: c.model, run: (opts) => callProvider(c, opts) }));
+  return [...chain, ...extraProviders()];
 }
 
-function buildProviders(prompt, lang) {
-  const DEEPSEEK_BASE_URL = (getConfig('ai_deepseek_base_url', 'DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1') || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-  const DEEPSEEK_API_KEY = getConfig('ai_deepseek_key', 'DEEPSEEK_API_KEY');
-  const DEEPSEEK_MODEL = getConfig('ai_deepseek_model', 'DEEPSEEK_MODEL', 'deepseek-chat');
-
-  const KIMI_BASE_URL = (getConfig('ai_kimi_base_url', 'KIMI_BASE_URL', 'https://api.moonshot.ai/v1') || 'https://api.moonshot.ai/v1').replace(/\/$/, '');
-  const KIMI_API_KEY = getConfig('ai_kimi_key', 'KIMI_API_KEY');
-  const KIMI_MODEL = getConfig('ai_kimi_model', 'KIMI_MODEL', 'kimi-k2.6');
-
-  const list = [];
-
-  if (DEEPSEEK_API_KEY) {
-    list.push({
-      name: 'deepseek',
-      run: () => callOpenAICompatible(DEEPSEEK_BASE_URL, DEEPSEEK_API_KEY, DEEPSEEK_MODEL, prompt, lang),
-    });
+// chat({ system, messages, maxTokens }) -> { text, provider }
+// Essaie chaque fournisseur dans l'ordre ; saute ceux en pause (sauf s'il n'en reste aucun).
+async function chat(opts) {
+  const chain = activeChain();
+  if (!chain.length) {
+    const err = new Error('IA non configurée — ajoute au moins une clé dans /admin/ai.');
+    err.code = 'AI_NOT_CONFIGURED';
+    throw err;
   }
-
-  if (KIMI_API_KEY) {
-    list.push({
-      name: 'kimi',
-      run: () => callOpenAICompatible(KIMI_BASE_URL, KIMI_API_KEY, KIMI_MODEL, prompt, lang),
-    });
-  }
-
-  genericProvidersFromEnv().forEach((p) => {
-    list.push({ name: `provider ${p.n}`, run: () => callGeneric(p, prompt, lang) });
-  });
-
-  // OmniRoute n'est utilisé que si une URL est explicitement configurée,
-  // ce qui évite de tenter localhost depuis Render.
-  if (OMNIROUTE_URL) {
-    list.push({
-      name: 'omniroute',
-      run: () => callOpenAICompatible(OMNIROUTE_URL, OMNIROUTE_API_KEY, OMNIROUTE_MODEL, prompt, lang),
-    });
-  }
-
-  return list;
-}
-
-// generateDescription(prompt, lang) -> Promise<string>
-async function generateDescription(prompt, lang = 'fr') {
-  const providers = buildProviders(prompt, lang);
+  const now = Date.now();
+  const ready = chain.filter((p) => !(h(p.id).pausedUntil > now));
+  const order = ready.length ? ready : chain;
   const errors = [];
-
-  for (let i = 0; i < providers.length; i++) {
-    const p = providers[i];
+  for (let i = 0; i < order.length; i++) {
+    const p = order[i];
     try {
-      return await p.run();
+      const text = await p.run(opts);
+      markOk(p.id);
+      if (i > 0) emit({ kind: 'failover', from: order[0].name, to: p.name, error: errors.join(' ; ') });
+      return { text, provider: p.name };
     } catch (e) {
+      markFail(p.id, e.message);
       errors.push(`${p.name}: ${e.message}`);
-      const next = providers[i + 1];
-      emit(next
-        ? { kind: 'failover', from: p.name, to: next.name, error: e.message }
-        : { kind: 'all_failed', errors: errors.slice() });
     }
   }
-
-  const err = new Error(
-    providers.length === 0
-      ? 'IA non configurée — renseignez DeepSeek ou Kimi dans /admin/ai, ou définissez DEEPSEEK_API_KEY / KIMI_API_KEY / AI_PROVIDER_* dans le .env.'
-      : `IA indisponible après ${providers.length} tentative(s). Détails : ${errors.join(' ; ')}`
-  );
-  err.code = providers.length === 0 ? 'AI_NOT_CONFIGURED' : 'AI_ALL_FAILED';
+  emit({ kind: 'all_failed', errors });
+  const err = new Error(`IA indisponible après ${order.length} tentative(s). ${errors.join(' ; ')}`);
+  err.code = 'AI_ALL_FAILED';
   throw err;
 }
 
-async function getJson(url, key) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: key ? { Authorization: `Bearer ${key}` } : {},
-      signal: controller.signal,
-    });
-    const text = await res.text();
-    let json = null;
-    try { json = JSON.parse(text); } catch (e) { json = null; }
-    if (!res.ok) throw new Error(`HTTP ${res.status}${text ? ` ${text.slice(0, 160)}` : ''}`);
-    return json;
-  } finally {
-    clearTimeout(timer);
-  }
+const SYSTEM_BY_LANG = {
+  fr: 'Réponds en français.', en: 'Reply in English.', ht: 'Reponn an kreyòl ayisyen.', es: 'Responde en español.',
+};
+
+// Compatibilité : description de produit dans une langue.
+async function generateDescription(prompt, lang = 'fr') {
+  const r = await chat({ system: SYSTEM_BY_LANG[lang] || SYSTEM_BY_LANG.fr, messages: [{ role: 'user', content: prompt }], maxTokens: 400 });
+  return r.text;
 }
 
-async function listModels(baseUrl, key) {
-  const data = await getJson(`${baseUrl.replace(/\/$/, '')}/models`, key);
-  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
-  return rows.map((m) => m.id || m.model || m.name || '').filter(Boolean);
-}
-
-async function probeChat(baseUrl, key, model) {
-  const data = await postJson(
-    `${baseUrl.replace(/\/$/, '')}/chat/completions`,
-    {
-      model,
-      messages: [{ role: 'user', content: 'Test de connexion. Reponds uniquement : OK.' }],
-      max_tokens: 128,
-    },
-    key
-  );
-  const msg = data && data.choices && data.choices[0] && data.choices[0].message;
-  const text = msg && (msg.content || msg.reasoning_content);
+// ---------- Test d'un fournisseur depuis l'admin ----------
+function effectiveConfig(providerId, body = {}) {
+  const p = PROVIDERS.find((x) => x.id === providerId) || PROVIDERS[0];
+  const base = providerConfig(p);
+  const MASK = '••••••••';
+  const k = String(body[`${p.id}_key`] || '').trim();
   return {
-    model: (data && data.model) || model,
-    text: text ? String(text).trim() : '',
+    ...base,
+    apiKey: k && k !== MASK ? k : base.apiKey,
+    baseUrl: (String(body[`${p.id}_base_url`] || '').trim() || base.baseUrl).replace(/\/$/, ''),
+    model: String(body[`${p.id}_model`] || '').trim() || base.model,
   };
 }
 
-// Teste une cle OpenAI-compatible : liste les modeles, puis tente un appel minimal.
-async function testProviderConfig({ baseUrl, apiKey, model }) {
-  if (!apiKey) return { ok: false, error: 'Cle API manquante', models: [], chatOk: false };
-  if (!baseUrl) return { ok: false, error: 'URL de base manquante', models: [], chatOk: false };
+async function listModels(cfg) {
+  const headers = cfg.kind === 'anthropic'
+    ? { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' }
+    : { Authorization: `Bearer ${cfg.apiKey}` };
+  const data = await requestJson(`${cfg.baseUrl}/models`, { method: 'GET', headers });
+  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : (data && Array.isArray(data.models) ? data.models : []));
+  return rows.map((m) => String(m.id || m.name || '').replace(/^models\//, '')).filter(Boolean);
+}
 
+async function testProvider(providerId, body) {
+  const cfg = effectiveConfig(providerId, body);
+  if (!cfg.apiKey) return { ok: false, error: 'Clé API manquante', models: [], chatOk: false };
   const started = Date.now();
   let models = [];
+  let modelsError = null;
+  try { models = await listModels(cfg); } catch (e) { modelsError = e.message; }
+  let chatOk = false, chatError = null, sample = '';
   try {
-    models = await listModels(baseUrl, apiKey);
-  } catch (e) {
-    return { ok: false, error: e.message, models: [], chatOk: false, latencyMs: Date.now() - started };
-  }
-
-  let chatError = null;
-  let chatModel = '';
-  let sample = '';
-  if (model) {
-    try {
-      const probe = await probeChat(baseUrl, apiKey, model);
-      chatModel = probe.model;
-      sample = probe.text.slice(0, 180);
-    } catch (e) {
-      chatError = e.message;
-    }
-  }
-
+    sample = (await callProvider(cfg, { messages: [{ role: 'user', content: 'Test de connexion. Réponds uniquement : OK.' }], maxTokens: 20 })).slice(0, 120);
+    chatOk = true;
+    markOk(cfg.id);
+  } catch (e) { chatError = e.message; markFail(cfg.id, e.message); }
+  const modelKnown = !models.length || models.includes(cfg.model);
   return {
-    ok: true,
-    error: null,
-    models,
-    chatOk: !chatError && !!sample,
-    chatError,
-    chatModel,
-    sample,
-    latencyMs: Date.now() - started,
+    ok: chatOk, error: chatOk ? null : (chatError || modelsError), models, chatOk, chatError, sample,
+    model: cfg.model, modelKnown, latencyMs: Date.now() - started,
   };
 }
 
-module.exports = { generateDescription, onEvent, testProviderConfig };
+// État pour l'admin et le rapport quotidien.
+function status() {
+  const now = Date.now();
+  return PROVIDERS.map(providerConfig).map((c, i) => {
+    const s = health[c.id] || {};
+    return {
+      id: c.id, name: c.name, priority: i + 1, configured: !!c.apiKey, model: c.model, help: c.help,
+      state: !c.apiKey ? 'absent' : s.pausedUntil > now ? 'pause' : s.ok === false ? 'erreur' : s.ok ? 'ok' : 'inconnu',
+      lastError: s.lastError || '', calls: s.calls || 0,
+    };
+  });
+}
+
+module.exports = { PROVIDERS, FIELDS, chat, generateDescription, onEvent, testProvider, status };

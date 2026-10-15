@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Assistant IA — conversations</h1>
+  <p class="muted">Ce que les visiteurs demandent à l'assistant, et ses réponses. Utile pour savoir ce que cherchent tes lecteurs.</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <a class="btn btn-small btn-ghost" href="/admin/ai">Configuration IA</a>
+  </div>
+</section>
+
+<% if (saved) { %><p class="alert alert-ok">Réglages enregistrés.</p><% } %>
+
+<section class="dash-panel">
+  <h2>Réglages</h2>
+  <form method="post" action="/admin/conversations/settings" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-row">
+      <label class="check-row"><input type="checkbox" name="chat_enabled" <%= chatEnabled ? 'checked' : '' %>> Assistant affiché sur le site</label>
+      <label>Plafond de messages par 24 h (coût IA maîtrisé)
+        <input type="number" name="chat_daily_cap" min="0" max="100000" value="<%= chatCap %>"></label>
+    </div>
+    <p class="muted small">Chaque visiteur est aussi limité à 25 messages par heure.</p>
+    <div><button class="btn" type="submit">Enregistrer</button></div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2><%= convs.length %> conversation(s) récente(s)</h2>
+  <% if (!convs.length) { %><p class="muted">Aucune conversation pour l'instant.</p><% } %>
+  <% convs.forEach(function (c) { %>
+    <details class="conv">
+      <summary><strong><%= c.messages[0] ? c.messages[0].content.slice(0, 90) : '…' %></strong>
+        <span class="muted small"> — <%= c.started %> UTC · <%= c.n %> message(s) · <%= c.lang %></span></summary>
+      <div class="conv-log">
+        <% c.messages.forEach(function (m) { %>
+          <div class="chat-msg <%= m.role === 'user' ? 'user' : 'bot' %>"><%= m.content %><% if (m.provider) { %><br><span class="small" style="opacity:.6">via <%= m.provider %></span><% } %></div>
+        <% }) %>
+      </div>
+    </details>
+  <% }) %>
+</section>
+
+<%- include('../partials/footer') %>

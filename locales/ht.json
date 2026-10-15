@@ -1,4 +1,12 @@
 {
+  "chat_open": "Ou gen kesyon ? Ann pale",
+  "chat_title": "Asistan Lesly Tech",
+  "chat_sub": "M ap gide w nan liv, aplikasyon ak sèvis nou yo.",
+  "chat_hello": "Bonjou ! 👋 Mwen se asistan Lesly Tech LLC ak Les Éditions LeVent. Kisa w ap chèche ? Yon gid pou viv Ozetazini, vin sitwayen, yon metye, yon liv pou timoun… ?",
+  "chat_placeholder": "Ekri kesyon ou…",
+  "chat_send": "Voye",
+  "chat_typing": "Asistan an ap ekri…",
+  "chat_note": "Repons IA — verifye enfòmasyon enpòtan yo.",
   "admin_activate": "Aktive",
   "admin_add_product": "Ajoute yon pwodui",
   "admin_back_site": "Wè sit la",

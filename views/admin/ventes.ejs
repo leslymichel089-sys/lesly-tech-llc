@@ -1,0 +1,63 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Ventes</h1>
+  <p class="muted">Chaque achat sur Payhip, Gumroad ou Shopify arrive ici en direct et te prévient par e-mail, Telegram, WhatsApp et SMS
+    (selon les canaux configurés dans Notifications). Amazon KDP n'envoie pas d'alerte : ses ventes restent visibles dans le tableau de bord KDP.</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <a class="btn btn-small btn-ghost" href="/admin/notifications">Notifications</a>
+    <form method="post" action="/admin/ventes/test" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-small" type="submit">Envoyer une vente de test</button>
+    </form>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2>Brancher tes boutiques (à faire une seule fois)</h2>
+  <p class="muted small">Copie chaque adresse dans la plateforme correspondante. Elles contiennent une clé secrète : ne les partage pas.</p>
+  <div class="cred-group">
+    <h3>Payhip</h3>
+    <p class="small">Payhip → <strong>Settings → Developer → Webhooks</strong> → ajoute l'URL ci-dessous, événement <em>paid</em> (et <em>refunded</em>).</p>
+    <input type="text" readonly value="<%= urls.payhip %>" onclick="this.select()">
+  </div>
+  <div class="cred-group">
+    <h3>Gumroad</h3>
+    <p class="small">Gumroad → <strong>Settings → Advanced → Ping</strong> (« Ping endpoint ») → colle l'URL ci-dessous et enregistre.</p>
+    <input type="text" readonly value="<%= urls.gumroad %>" onclick="this.select()">
+  </div>
+  <div class="cred-group">
+    <h3>Shopify</h3>
+    <p class="small">Shopify → <strong>Paramètres → Notifications → Webhooks</strong> → Créer un webhook : événement <em>Création de commande</em>, format JSON, URL ci-dessous.</p>
+    <input type="text" readonly value="<%= urls.shopify %>" onclick="this.select()">
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= sales.length %> vente(s) reçue(s) — total <%= total.toFixed(2) %> $</h2>
+  <% if (!sales.length) { %>
+    <p class="muted">Aucune vente reçue pour l'instant. Une fois les adresses ci-dessus branchées, chaque achat apparaîtra ici.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Date (UTC)</th><th>Plateforme</th><th>Produit</th><th>Montant</th><th>Client</th><th>Type</th></tr></thead>
+        <tbody>
+          <% sales.forEach(function (s) { %>
+            <tr class="<%= s.kind === 'sale' ? '' : 'row-off' %>">
+              <td class="nowrap small"><%= s.at %></td>
+              <td><%= s.platform %></td>
+              <td><%= s.product %></td>
+              <td class="nowrap"><%= Number(s.amount).toFixed(2) %> <%= s.currency %></td>
+              <td class="small"><%= s.buyer %></td>
+              <td><span class="tag <%= s.kind === 'sale' ? 'tag-update' : 'tag-off' %>"><%= { sale: 'vente', refund: 'remboursement', test: 'test' }[s.kind] || s.kind %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

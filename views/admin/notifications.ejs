@@ -85,7 +85,21 @@
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
     <fieldset class="cred-group">
-      <legend><%= t('notif_smtp_title') %> — <%= t('notif_ch_email') %></legend>
+      <legend>Resend — <%= t('notif_ch_email') %> (recommandé)</legend>
+      <p class="muted small">resend.com → API Keys. L'adresse d'envoi doit appartenir à un domaine vérifié dans Resend
+        (sinon laisse vide : « onboarding@resend.dev », qui n'envoie qu'à l'adresse de ton compte Resend).</p>
+      <div class="form-row">
+        <label>Clé API Resend <%- include('cred_badge', { src: credSrc.resend_key, t: t }) %>
+          <input type="password" name="resend_key" value="<%= creds.resend_key %>" autocomplete="new-password" placeholder="re_..."></label>
+        <label>Expéditeur <%- include('cred_badge', { src: credSrc.resend_from, t: t }) %>
+          <input type="text" name="resend_from" value="<%= creds.resend_from %>" placeholder="Lesly Tech LLC &lt;alertes@ton-domaine.com&gt;"></label>
+        <label><%= t('notif_email_to') %> <%- include('cred_badge', { src: credSrc.email_to, t: t }) %>
+          <input type="text" name="email_to" value="<%= creds.email_to %>" placeholder="toi@exemple.com, autre@exemple.com"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend><%= t('notif_smtp_title') %> — <%= t('notif_ch_email') %> (si pas de Resend)</legend>
       <div class="form-row">
         <label><%= t('notif_smtp_host') %> <%- include('cred_badge', { src: credSrc.smtp_host, t: t }) %>
           <input type="text" name="smtp_host" value="<%= creds.smtp_host %>" placeholder="smtp.gmail.com"></label>
@@ -103,8 +117,6 @@
       <div class="form-row">
         <label><%= t('notif_smtp_from') %> <%- include('cred_badge', { src: credSrc.smtp_from, t: t }) %>
           <input type="text" name="smtp_from" value="<%= creds.smtp_from %>"></label>
-        <label><%= t('notif_email_to') %> <%- include('cred_badge', { src: credSrc.email_to, t: t }) %>
-          <input type="text" name="email_to" value="<%= creds.email_to %>"></label>
       </div>
     </fieldset>
 
@@ -142,6 +154,17 @@
           <input type="text" name="twilio_from" value="<%= creds.twilio_from %>" placeholder="whatsapp:+1415..." autocomplete="off"></label>
         <label><%= t('notif_whatsapp_to') %> <%- include('cred_badge', { src: credSrc.whatsapp_to, t: t }) %>
           <input type="text" name="whatsapp_to" value="<%= creds.whatsapp_to %>" placeholder="whatsapp:+509..." autocomplete="off"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cred-group">
+      <legend>SMS — Twilio</legend>
+      <p class="muted small">Utilise le même SID et le même jeton Twilio que WhatsApp ci-dessus. Numéros au format international (+1…, +509…).</p>
+      <div class="form-row">
+        <label>Numéro Twilio d'envoi (SMS) <%- include('cred_badge', { src: credSrc.sms_from, t: t }) %>
+          <input type="text" name="sms_from" value="<%= creds.sms_from %>" placeholder="+1336..." autocomplete="off"></label>
+        <label>Ton numéro (réception SMS) <%- include('cred_badge', { src: credSrc.sms_to, t: t }) %>
+          <input type="text" name="sms_to" value="<%= creds.sms_to %>" placeholder="+1..." autocomplete="off"></label>
       </div>
     </fieldset>
 

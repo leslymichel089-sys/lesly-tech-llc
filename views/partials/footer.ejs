@@ -49,6 +49,26 @@
   </div>
 </div>
 <% } %>
+<% if (chatEnabled && !String(currentPath).startsWith('/admin')) { %>
+<div class="chat-widget" id="chat-widget" data-csrf="<%= csrfToken %>" data-lang="<%= lang %>">
+  <button type="button" class="chat-toggle" id="chat-toggle" aria-expanded="false" aria-controls="chat-panel">💬 <span><%= t('chat_open') %></span></button>
+  <div class="chat-panel" id="chat-panel" role="dialog" aria-label="<%= t('chat_title') %>" hidden>
+    <div class="chat-head">
+      <img src="/img/levent-logo.jpg" alt="" width="36" height="36">
+      <div><strong><%= t('chat_title') %></strong><br><span><%= t('chat_sub') %></span></div>
+      <button type="button" class="chat-close" id="chat-close" aria-label="Fermer">✕</button>
+    </div>
+    <div class="chat-log" id="chat-log" aria-live="polite">
+      <div class="chat-msg bot"><%= t('chat_hello') %></div>
+    </div>
+    <form class="chat-form" id="chat-form">
+      <input type="text" id="chat-input" maxlength="800" autocomplete="off" placeholder="<%= t('chat_placeholder') %>" aria-label="<%= t('chat_placeholder') %>">
+      <button type="submit" class="btn btn-small"><%= t('chat_send') %></button>
+    </form>
+    <p class="chat-note" data-typing="<%= t('chat_typing') %>"><%= t('chat_note') %></p>
+  </div>
+</div>
+<% } %>
 <script src="/js/main.js"></script>
 </body>
 </html>

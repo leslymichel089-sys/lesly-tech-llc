@@ -12,7 +12,7 @@
 // avant d'être déclaré en échec.
 const dbm = require('./db');
 
-const CHANNELS = ['email', 'whatsapp', 'telegram', 'windows'];
+const CHANNELS = ['email', 'whatsapp', 'telegram', 'sms', 'windows'];
 
 // Valeur effective : ENV prioritaire, puis réglage admin, puis ''.
 function val(envName, dbKey) {
@@ -27,6 +27,23 @@ function isEnv(envName) {
 }
 
 // ---------- Configuration effective de chaque canal (null = non configuré) ----------
+// E-mail : Resend (API HTTPS) en priorité, sinon SMTP.
+function resendConfig() {
+  const key = val('RESEND_API_KEY', 'notif_resend_key');
+  const to = val('NOTIF_EMAIL_TO', 'notif_email_to');
+  if (!key || !to) return null;
+  return { key, to, from: val('RESEND_FROM', 'notif_resend_from') || 'Lesly Tech LLC <onboarding@resend.dev>' };
+}
+
+function smsConfig() {
+  const sid = val('TWILIO_ACCOUNT_SID', 'notif_twilio_sid');
+  const token = val('TWILIO_AUTH_TOKEN', 'notif_twilio_token');
+  const from = val('TWILIO_SMS_FROM', 'notif_sms_from');
+  const to = val('SMS_TO', 'notif_sms_to');
+  if (!sid || !token || !from || !to) return null;
+  return { sid, token, from, to };
+}
+
 function emailConfig() {
   const host = val('SMTP_HOST', 'notif_smtp_host');
   const user = val('SMTP_USER', 'notif_smtp_user');
@@ -73,13 +90,15 @@ function windowsConfig() {
 
 // ---------- État des canaux pour le panel admin ----------
 function channelStatus() {
-  const email = emailConfig();
+  const email = resendConfig() || emailConfig();
+  const sms = smsConfig();
   const wa = whatsappConfig();
   const tg = telegramConfig();
   const win = windowsConfig();
   const src = (envNames) => (envNames.some(isEnv) ? 'env' : 'admin');
   return [
-    { channel: 'email', configured: !!email, source: email ? src(['SMTP_HOST', 'SMTP_USER', 'NOTIF_EMAIL_TO']) : null },
+    { channel: 'email', configured: !!email, source: email ? src(['RESEND_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'NOTIF_EMAIL_TO']) : null, mode: resendConfig() ? 'Resend' : (email ? 'SMTP' : null) },
+    { channel: 'sms', configured: !!sms, source: sms ? src(['TWILIO_ACCOUNT_SID', 'TWILIO_SMS_FROM', 'SMS_TO']) : null },
     { channel: 'whatsapp', configured: !!wa, source: wa ? src(['WHATSAPP_MODE', 'CALLMEBOT_APIKEY', 'WHATSAPP_PHONE', 'TWILIO_ACCOUNT_SID']) : null, mode: wa ? wa.mode : null },
     { channel: 'telegram', configured: !!tg, source: tg ? src(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']) : null },
     { channel: 'windows', configured: !!win, source: win ? src(['WINDOWS_NOTIFY']) : null, windowsOnly: win ? win.windowsOnly : false },
@@ -181,6 +200,42 @@ function smtpSend(cfg, subject, text) {
   });
 }
 
+// ---------- Resend (e-mail HTML via API) ----------
+async function resendSend(cfg, subject, text, html) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: cfg.from, to: cfg.to.split(/[,;]s*/).filter(Boolean), subject,
+      text, ...(html ? { html } : {}),
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) {
+    let d = ''; try { d = (await res.text()).slice(0, 160); } catch (e) {}
+    throw new Error(`Resend HTTP ${res.status} ${d}`);
+  }
+  return 'e-mail envoyé (Resend)';
+}
+
+// ---------- SMS (Twilio) ----------
+async function smsSend(cfg, title, message) {
+  const auth = Buffer.from(`${cfg.sid}:${cfg.token}`).toString('base64');
+  const params = new URLSearchParams({ From: cfg.from, To: cfg.to, Body: `${title}
+${message}`.slice(0, 600) });
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${cfg.sid}/Messages.json`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    let d = ''; try { d = (await res.text()).slice(0, 160); } catch (e) {}
+    throw new Error(`Twilio SMS HTTP ${res.status} ${d}`);
+  }
+  return 'SMS envoyé (Twilio)';
+}
+
 // ---------- Telegram ----------
 async function telegramSend(cfg, title, message) {
   const text = `${title}\n${message}`.slice(0, 4000);
@@ -255,16 +310,24 @@ function windowsSend(title, message) {
 // ---------- Envoi en PARALLÈLE sur tous les canaux configurés ----------
 // Retourne { ok, reason?, results: [{channel, ok, detail}], failed: [...] }.
 // Si aucun canal configuré : { ok:false, reason:'no_channel', results:[] }.
+// opts.html : version HTML (e-mail) ; opts.short : texte court pour SMS/WhatsApp/Telegram ;
+// opts.channels : liste de canaux à utiliser (par défaut tous les canaux configurés).
 async function sendAll(title, message, opts = {}) {
   const jobs = [];
+  const want = (c) => !opts.channels || opts.channels.includes(c);
+  const brief = opts.short || message;
+  const resend = resendConfig();
   const email = emailConfig();
-  if (email) jobs.push(['email', () => smtpSend(email, `[Lesly Tech LLC] ${title}`, message)]);
+  if (want('email') && resend) jobs.push(['email', () => resendSend(resend, `[Lesly Tech LLC] ${title}`, message, opts.html)]);
+  else if (want('email') && email) jobs.push(['email', () => smtpSend(email, `[Lesly Tech LLC] ${title}`, message)]);
   const wa = whatsappConfig();
-  if (wa) jobs.push(['whatsapp', () => whatsappSend(wa, title, message)]);
+  if (want('whatsapp') && wa) jobs.push(['whatsapp', () => whatsappSend(wa, title, brief)]);
   const tg = telegramConfig();
-  if (tg) jobs.push(['telegram', () => telegramSend(tg, title, message)]);
+  if (want('telegram') && tg) jobs.push(['telegram', () => telegramSend(tg, title, brief)]);
+  const sms = smsConfig();
+  if (want('sms') && sms) jobs.push(['sms', () => smsSend(sms, title, brief)]);
   const win = windowsConfig();
-  if (win) jobs.push(['windows', () => windowsSend(title, message)]);
+  if (want('windows') && win) jobs.push(['windows', () => windowsSend(title, brief)]);
 
   if (jobs.length === 0) return { ok: false, reason: 'no_channel', results: [], failed: [] };
 

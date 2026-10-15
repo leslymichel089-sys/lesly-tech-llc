@@ -1,4 +1,12 @@
 {
+  "chat_open": "¿Preguntas? Hablemos",
+  "chat_title": "Asistente Lesly Tech",
+  "chat_sub": "Te guío por nuestros libros, apps y servicios.",
+  "chat_hello": "¡Hola! 👋 Soy el asistente de Lesly Tech LLC y Les Éditions LeVent. ¿Qué buscas? ¿Una guía para vivir en EE. UU., la ciudadanía, una profesión, un libro infantil…?",
+  "chat_placeholder": "Escribe tu pregunta…",
+  "chat_send": "Enviar",
+  "chat_typing": "El asistente está escribiendo…",
+  "chat_note": "Respuestas generadas por IA — verifica la información importante.",
   "admin_activate": "Activar",
   "admin_add_product": "Añadir un producto",
   "admin_back_site": "Ver el sitio",

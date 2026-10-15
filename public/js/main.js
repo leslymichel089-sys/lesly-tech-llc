@@ -165,6 +165,76 @@
     });
   }
 
+  // --- Assistant IA des visiteurs (bulle de discussion) ---
+  var chat = document.getElementById('chat-widget');
+  if (chat) {
+    var panel = document.getElementById('chat-panel');
+    var toggle = document.getElementById('chat-toggle');
+    var log = document.getElementById('chat-log');
+    var form = document.getElementById('chat-form');
+    var input = document.getElementById('chat-input');
+    var note = chat.querySelector('.chat-note');
+    var STORE = 'ltl-chat-v1';
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    // Texte échappé, puis liens [texte](/chemin interne ou https://…) et chemins /produit/12 rendus cliquables.
+    function render(text) {
+      var html = esc(text)
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[([^\]]{1,120})\]\((\/[\w\-\/?=&.#%]*|https:\/\/[^\s)]+)\)/g, function (m, label, url) {
+          var ext = /^https:/.test(url);
+          return '<a href="' + url + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' + label + '</a>';
+        })
+        .replace(/(^|[\s(])(\/(?:produit\/\d+|catalogue|ebooks|contact))(?=[\s).,!?]|$)/g, '$1<a href="$2">$2</a>');
+      return html.replace(/\n/g, '<br>');
+    }
+    function add(role, text, save) {
+      var div = document.createElement('div');
+      div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'bot');
+      div.innerHTML = role === 'user' ? esc(text) : render(text);
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      if (save) {
+        try {
+          var h = JSON.parse(sessionStorage.getItem(STORE) || '[]'); h.push([role, text]);
+          sessionStorage.setItem(STORE, JSON.stringify(h.slice(-30)));
+        } catch (e) {}
+      }
+      return div;
+    }
+    // Conversation conservée pendant la navigation (même onglet).
+    try { JSON.parse(sessionStorage.getItem(STORE) || '[]').forEach(function (m) { add(m[0], m[1], false); }); } catch (e) {}
+
+    function setOpen(open) {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      chat.classList.toggle('is-open', open);
+      if (open) setTimeout(function () { input.focus(); log.scrollTop = log.scrollHeight; }, 50);
+    }
+    toggle.addEventListener('click', function () { setOpen(panel.hidden); });
+    document.getElementById('chat-close').addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) setOpen(false); });
+
+    var busy = false;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var text = input.value.trim();
+      if (!text || busy) return;
+      busy = true; input.value = '';
+      add('user', text, true);
+      var typing = add('bot', note.getAttribute('data-typing'), false);
+      typing.classList.add('typing');
+      fetch('/api/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, lang: chat.getAttribute('data-lang'), _csrf: chat.getAttribute('data-csrf') }),
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        typing.remove(); add('bot', d.reply || '…', true);
+      }).catch(function () {
+        typing.remove(); add('bot', '⚠ Connexion impossible. Réessaie dans un instant.', false);
+      }).then(function () { busy = false; input.focus(); });
+    });
+  }
+
   // --- Apparition au scroll ---
   var revealEls = document.querySelectorAll('.reveal');
   if ('IntersectionObserver' in window && revealEls.length) {

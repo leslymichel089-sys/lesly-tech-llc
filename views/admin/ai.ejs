@@ -2,7 +2,8 @@
 
 <section class="page-head">
   <h1>Configuration IA</h1>
-  <p class="muted">Ordre de bascule : DeepSeek d'abord, Kimi ensuite, puis les providers génériques et OmniRoute si configuré.</p>
+  <p class="muted">Bascule automatique : le site essaie les fournisseurs <strong>dans cet ordre</strong> (DeepSeek d'abord) et passe au suivant
+    en cas d'échec. Seuls ceux qui ont une clé sont utilisés. Un fournisseur qui échoue 3 fois de suite est mis en pause 10 minutes.</p>
   <div class="dash-actions">
     <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
   </div>
@@ -12,41 +13,51 @@
 <div id="ai-test-result" class="alert" style="display:none" aria-live="polite"></div>
 
 <section class="dash-panel">
-  <h2>Fournisseurs principaux</h2>
+  <h2>État de la chaîne de secours</h2>
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>#</th><th>Fournisseur</th><th>Modèle</th><th>État</th><th>Dernière erreur</th></tr></thead>
+      <tbody>
+        <% aiStatus.forEach(function (s) { %>
+          <tr class="<%= s.configured ? '' : 'row-off' %>">
+            <td><%= s.priority %></td>
+            <td><strong><%= s.name %></strong></td>
+            <td class="small"><%= s.model %></td>
+            <td><span class="tag <%= s.state === 'ok' ? 'tag-update' : (s.state === 'erreur' || s.state === 'pause') ? 'tag-off' : '' %>">
+              <%= { absent: 'pas de clé', pause: 'en pause', erreur: 'erreur', ok: 'OK', inconnu: 'pas encore utilisé' }[s.state] %></span></td>
+            <td class="muted small"><%= s.lastError %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2>Clés des fournisseurs</h2>
   <form method="post" action="/admin/ai/credentials" class="form form-wide">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-    <fieldset class="cred-group">
-      <legend>DeepSeek — priorité 1</legend>
-      <div class="form-row">
-        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.deepseek_key, t: t }) %>
-          <input type="password" name="deepseek_key" value="<%= aiCreds.deepseek_key %>" autocomplete="new-password"></label>
-        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.deepseek_base_url, t: t }) %>
-          <input type="text" name="deepseek_base_url" value="<%= aiCreds.deepseek_base_url %>" placeholder="https://api.deepseek.com/v1"></label>
-        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.deepseek_model, t: t }) %>
-          <input type="text" name="deepseek_model" value="<%= aiCreds.deepseek_model %>" placeholder="deepseek-chat"></label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="deepseek" data-csrf="<%= csrfToken %>">Tester DeepSeek</button>
-      </div>
-    </fieldset>
-
-    <fieldset class="cred-group">
-      <legend>Kimi — priorité 2</legend>
-      <div class="form-row">
-        <label>Clé API <%- include('cred_badge', { src: aiCredSrc.kimi_key, t: t }) %>
-          <input type="password" name="kimi_key" value="<%= aiCreds.kimi_key %>" autocomplete="new-password"></label>
-        <label>URL de base <%- include('cred_badge', { src: aiCredSrc.kimi_base_url, t: t }) %>
-          <input type="text" name="kimi_base_url" value="<%= aiCreds.kimi_base_url %>" placeholder="https://api.moonshot.ai/v1"></label>
-        <label>Modèle <%- include('cred_badge', { src: aiCredSrc.kimi_model, t: t }) %>
-          <input type="text" name="kimi_model" value="<%= aiCreds.kimi_model %>" placeholder="kimi-k2.6"></label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="kimi" data-csrf="<%= csrfToken %>">Tester Kimi</button>
-      </div>
-    </fieldset>
-
-    <p class="muted small">Les clés restent stockées localement dans la base du site et ne sont jamais affichées en clair ici.</p>
+    <% aiProviders.forEach(function (p, i) { %>
+      <fieldset class="cred-group">
+        <legend><%= p.name %> — priorité <%= i + 1 %></legend>
+        <p class="muted small">Clé : <%= p.help %></p>
+        <div class="form-row">
+          <label>Clé API <%- include('cred_badge', { src: aiCredSrc[p.id + '_key'], t: t }) %>
+            <input type="password" name="<%= p.id %>_key" value="<%= aiCreds[p.id + '_key'] %>" autocomplete="new-password"></label>
+          <label>URL de base <%- include('cred_badge', { src: aiCredSrc[p.id + '_base_url'], t: t }) %>
+            <input type="text" name="<%= p.id %>_base_url" value="<%= aiCreds[p.id + '_base_url'] %>" placeholder="<%= p.base %>"></label>
+          <label>Modèle <%- include('cred_badge', { src: aiCredSrc[p.id + '_model'], t: t }) %>
+            <input type="text" name="<%= p.id %>_model" value="<%= aiCreds[p.id + '_model'] %>" placeholder="<%= p.model %>"></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="<%= p.id %>" data-csrf="<%= csrfToken %>">Tester <%= p.name %></button>
+          <% if (aiCredSrc[p.id + '_key'] === 'admin') { %>
+            <label class="check-row small"><input type="checkbox" name="<%= p.id %>_key_clear" value="1"> Effacer la clé</label>
+          <% } %>
+        </div>
+      </fieldset>
+    <% }) %>
+    <p class="muted small">Les clés restent dans la base du site et ne sont jamais réaffichées en clair. Laisse un champ vide pour garder la valeur actuelle.</p>
     <div><button class="btn" type="submit">Enregistrer la configuration IA</button></div>
   </form>
 </section>
@@ -57,52 +68,34 @@
     var el = document.querySelector('[name="' + provider + '_' + name + '"]');
     return el ? el.value : '';
   }
-
   function showResult(result, isOk) {
     var box = document.getElementById('ai-test-result');
-    if (!box) return;
     box.style.display = 'block';
     box.className = 'alert ' + (isOk ? 'alert-ok' : 'alert-error');
     box.textContent = result;
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
-
   document.querySelectorAll('.ai-test').forEach(function (btn) {
     btn.addEventListener('click', async function () {
       var provider = btn.getAttribute('data-provider');
       showResult('Test en cours pour ' + provider + '…', true);
-      var payload = {
-        provider: provider,
-        _csrf: btn.getAttribute('data-csrf')
-      };
+      var payload = { provider: provider, _csrf: btn.getAttribute('data-csrf') };
       payload[provider + '_key'] = field(provider, 'key');
       payload[provider + '_base_url'] = field(provider, 'base_url');
       payload[provider + '_model'] = field(provider, 'model');
-
       try {
-        var res = await fetch('/admin/ai/test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        var res = await fetch('/admin/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         var data = await res.json();
-        if (!data || !data.result) {
-          showResult('Réponse invalide du serveur.', false);
-          return;
-        }
-        var r = data.result;
-        var msg = data.provider + ' : ' + (r.ok ? 'clé valide' : 'échec') + '.';
-        if (r.latencyMs != null) msg += ' Latence ' + r.latencyMs + ' ms.';
-        if (Array.isArray(r.models) && r.models.length) {
-          msg += ' Modèles disponibles : ' + r.models.slice(0, 8).join(', ') + '.';
-        }
-        if (r.chatOk) {
-          msg += ' Appel chat OK';
-          if (r.sample) msg += ' (« ' + r.sample + ' »)';
-          msg += '.';
-        } else if (r.chatError) {
-          msg += ' Appel chat non confirmé : ' + r.chatError + '.';
-        }
+        var r = data.result || {};
+        var msg = provider + ' : ' + (r.ok ? 'fonctionne ✔' : 'échec ✖') + '.';
+        if (r.latencyMs != null) msg += ' ' + r.latencyMs + ' ms.';
+        if (r.chatOk && r.sample) msg += ' Réponse : « ' + r.sample + ' ».';
         if (r.error) msg += ' Détail : ' + r.error + '.';
+        if (r.models && r.models.length && !r.modelKnown) {
+          msg += ' ⚠ Le modèle « ' + r.model + ' » n\'est pas dans la liste du fournisseur. Modèles disponibles : ' + r.models.slice(0, 12).join(', ') + '.';
+        } else if (!r.ok && r.models && r.models.length) {
+          msg += ' Modèles disponibles : ' + r.models.slice(0, 12).join(', ') + '.';
+        }
         showResult(msg, r.ok);
       } catch (e) {
         showResult('Erreur réseau : ' + e.message, false);

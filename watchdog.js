@@ -21,6 +21,10 @@ const ALERT_TYPES = [
   'ai_failover',      // bascule du routeur IA sur un autre provider
   'server_error',     // erreur serveur
   'channel_failure',  // échec d'un canal de notification lui-même
+  'sale',             // achat reçu (webhook Payhip / Gumroad / Shopify)
+  'anomaly',          // anomalie système (disque, mémoire, liens cassés, IA…)
+  'server_start',     // redémarrage du site (déploiement ou plantage)
+  'daily_report',     // rapport quotidien
 ];
 
 // Anti-spam : délai minimum entre deux alertes du même type.
@@ -33,7 +37,13 @@ const COOLDOWN_MS = {
   ai_failover: 10 * 60 * 1000,
   server_error: 15 * 60 * 1000,
   channel_failure: 30 * 60 * 1000,
+  sale: 0,
+  anomaly: 60 * 60 * 1000,        // par anomalie distincte (voir cooldownKey)
+  server_start: 10 * 60 * 1000,
+  daily_report: 0,
 };
+// Les anomalies différentes ne se bloquent pas entre elles.
+const cooldownKey = (type, title) => (type === 'anomaly' ? `${type}:${title}` : type);
 const lastFired = {};
 
 function isAlertEnabled(type) {
@@ -42,7 +52,7 @@ function isAlertEnabled(type) {
 
 // Déclenche une alerte : vérifie l'activation + cooldown, envoie via notify,
 // journalise le résultat. Ne lève jamais d'exception (fire-and-forget sûr).
-async function fire(type, title, message) {
+async function fire(type, title, message, opts = {}) {
   try {
     if (!ALERT_TYPES.includes(type)) return { ok: false, reason: 'unknown_type' };
     if (!isAlertEnabled(type)) {
@@ -51,12 +61,13 @@ async function fire(type, title, message) {
     }
     const now = Date.now();
     const cd = COOLDOWN_MS[type] || 0;
-    if (cd && lastFired[type] && now - lastFired[type] < cd) {
+    const ck = cooldownKey(type, title);
+    if (cd && lastFired[ck] && now - lastFired[ck] < cd) {
       return { ok: false, reason: 'cooldown' };
     }
-    lastFired[type] = now;
+    lastFired[ck] = now;
 
-    const res = await notify.sendAll(title, message);
+    const res = await notify.sendAll(title, message, opts);
     dbm.logNotif(type, title, message, res.results);
 
     if (res.reason === 'no_channel') return { ok: false, reason: 'no_channel', results: [] };

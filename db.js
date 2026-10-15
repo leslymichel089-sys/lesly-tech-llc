@@ -73,6 +73,34 @@ CREATE TABLE IF NOT EXISTS rate_events (
   at INTEGER NOT NULL                    -- timestamp ms
 );
 CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events (bucket, key, at);
+CREATE TABLE IF NOT EXISTS sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  platform TEXT NOT NULL,                -- payhip | gumroad | shopify
+  external_id TEXT DEFAULT '',
+  product TEXT DEFAULT '',
+  amount REAL DEFAULT 0,
+  currency TEXT DEFAULT 'USD',
+  buyer TEXT DEFAULT '',
+  kind TEXT DEFAULT 'sale',              -- sale | refund | test
+  at TEXT DEFAULT (datetime('now')),
+  UNIQUE(platform, external_id, kind)
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conv TEXT NOT NULL,                    -- identifiant de conversation (session)
+  role TEXT NOT NULL,                    -- user | assistant
+  content TEXT DEFAULT '',
+  lang TEXT DEFAULT '',
+  ip TEXT DEFAULT '',
+  provider TEXT DEFAULT '',
+  at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_chat_conv ON chat_messages (conv, id);
+CREATE TABLE IF NOT EXISTS error_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message TEXT DEFAULT '',
+  at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS contact_messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT DEFAULT '', email TEXT DEFAULT '', message TEXT DEFAULT '',
@@ -496,4 +524,21 @@ const addContactMessage = (m) =>
 const listContactMessages = () => db.prepare('SELECT * FROM contact_messages ORDER BY id DESC LIMIT 500').all();
 const countContactMessages = () => db.prepare('SELECT COUNT(*) AS n FROM contact_messages').get().n;
 
-module.exports = { db, DATA_DIR, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus, rateCount, rateHit, rateClear, ratePurge, addContactMessage, listContactMessages, countContactMessages };
+// --- Ventes (webhooks) ---
+// Retourne true si la vente est nouvelle (false si déjà reçue : les plateformes renvoient parfois).
+const addSale = (s) => {
+  try {
+    db.prepare(`INSERT INTO sales (platform, external_id, product, amount, currency, buyer, kind)
+      VALUES (@platform, @external_id, @product, @amount, @currency, @buyer, @kind)`).run(s);
+    return true;
+  } catch (e) { return false; }
+};
+const listSales = (limit = 200) => db.prepare('SELECT * FROM sales ORDER BY id DESC LIMIT ?').all(limit);
+
+// --- Journal d'erreurs serveur (pour le rapport quotidien) ---
+const logError = (message) => {
+  db.prepare('INSERT INTO error_log (message) VALUES (?)').run(String(message).slice(0, 500));
+  db.prepare('DELETE FROM error_log WHERE id NOT IN (SELECT id FROM error_log ORDER BY id DESC LIMIT 1000)').run();
+};
+
+module.exports = { addSale, listSales, logError, db, DATA_DIR, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus, rateCount, rateHit, rateClear, ratePurge, addContactMessage, listContactMessages, countContactMessages };
