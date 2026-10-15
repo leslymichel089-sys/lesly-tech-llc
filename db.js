@@ -382,6 +382,32 @@ if (getSetting('links_sync_v4') !== '1') {
   setSetting('links_sync_v4', '1');
 }
 
+// --- Liens des 3 livres publiés le 15/10/2026 sur Payhip et Gumroad (exécuté une seule fois) ---
+if (getSetting('links_sync_v5') !== '1') {
+  const LINKS5 = {
+    'Èske Mwen Se Kat Bankè Antouraj Mwen ?': [
+      { label: 'Payhip', url: 'https://payhip.com/b/rRpty' },
+      { label: 'Gumroad', url: 'https://leslymichel.gumroad.com/l/fzcumi' }],
+    'Am I Everyone’s Bank Card?': [
+      { label: 'Payhip', url: 'https://payhip.com/b/2J7sL' },
+      { label: 'Gumroad', url: 'https://leslymichel.gumroad.com/l/cusdgf' }],
+    'Ta nouvelle vie aux États-Unis': [
+      { label: 'Payhip', url: 'https://payhip.com/b/5vZnX' },
+      { label: 'Gumroad', url: 'https://leslymichel.gumroad.com/l/chahc' }],
+  };
+  const upd5 = db.prepare('UPDATE products SET links = ? WHERE id = ?');
+  for (const r of db.prepare('SELECT id, title, links FROM products').all()) {
+    const add = LINKS5[r.title];
+    if (!add) continue;
+    let current = [];
+    try { current = JSON.parse(r.links || '[]'); } catch (e) {}
+    const merged = [...current];
+    for (const l of add) if (!merged.some((x) => x.url === l.url)) merged.push(l);
+    upd5.run(JSON.stringify(merged), r.id);
+  }
+  setSetting('links_sync_v5', '1');
+}
+
 // --- Helpers ---
 function rowToProduct(r) {
   let links = [];
