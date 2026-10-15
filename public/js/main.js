@@ -14,6 +14,15 @@
     });
   }
 
+  // --- Menu mobile : ouvrable au clavier (Entrée / Espace) ---
+  var burger = document.querySelector('.nav-burger');
+  var navToggle = document.getElementById('nav-toggle');
+  if (burger && navToggle) {
+    burger.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navToggle.checked = !navToggle.checked; }
+    });
+  }
+
   // --- Bouton « Partager le lien » (admin) ---
   var shareBtn = document.getElementById('share-btn');
   if (shareBtn) {

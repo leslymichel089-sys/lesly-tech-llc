@@ -38,21 +38,21 @@ try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentEle
   }
 }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <header class="site-header">
   <div class="wrap header-inner">
-    <a class="logo" href="/">Lesly Tech <span>LLC</span></a>
+    <a class="logo" href="/"><img src="/icon.svg" alt="" width="30" height="30"> Lesly Tech <span>LLC</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle">
-    <label for="nav-toggle" class="nav-burger" aria-label="Menu">☰</label>
+    <label for="nav-toggle" class="nav-burger" aria-label="Menu" tabindex="0" role="button">☰</label>
     <nav class="site-nav">
       <a href="/" class="<%= page === 'home' ? 'active' : '' %>"><%= t('nav_home') %></a>
       <a href="/catalogue" class="<%= page === 'catalogue' ? 'active' : '' %>"><%= t('nav_catalogue') %></a>
       <a href="/ebooks" class="<%= page === 'ebooks' ? 'active' : '' %>"><%= t('nav_ebooks') %></a>
-      <a href="/confidentialite" class="<%= page === 'confidentialite' ? 'active' : '' %>"><%= t('nav_privacy') %></a>
-      <a href="/propriete-intellectuelle" class="<%= page === 'propriete' ? 'active' : '' %>"><%= t('nav_ip') %></a>
-      <a href="/conditions" class="<%= page === 'conditions' ? 'active' : '' %>"><%= t('nav_terms') %></a>
       <a href="/contact" class="<%= page === 'contact' ? 'active' : '' %>"><%= t('nav_contact') %></a>
     </nav>
     <div class="header-tools">

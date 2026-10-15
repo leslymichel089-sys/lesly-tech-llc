@@ -1,8 +1,12 @@
 // db.js — SQLite (better-sqlite3) : schéma + seed initial.
 const path = require('path');
+const fs = require('fs');
 const Database = require('better-sqlite3');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'site.db');
+// Dossier des données persistantes (disque Render monté sur /data) : base + uploads.
+const DATA_DIR = path.dirname(path.resolve(dbPath));
+fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
@@ -57,7 +61,30 @@ CREATE TABLE IF NOT EXISTS app_status (
   detail TEXT DEFAULT '',
   updated_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS sessions (
+  sid TEXT PRIMARY KEY,
+  sess TEXT NOT NULL,
+  expires INTEGER NOT NULL               -- timestamp ms
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires);
+CREATE TABLE IF NOT EXISTS rate_events (
+  bucket TEXT NOT NULL,                  -- ex. login_ip, login_all, contact_ip
+  key TEXT NOT NULL,
+  at INTEGER NOT NULL                    -- timestamp ms
+);
+CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events (bucket, key, at);
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT DEFAULT '', email TEXT DEFAULT '', message TEXT DEFAULT '',
+  ip TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
+
+// Migration : colonne « media » (vidéo hébergée sur le site, ex. /videos/x.mp4 ou /uploads/x.mp4).
+if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'media')) {
+  db.exec("ALTER TABLE products ADD COLUMN media TEXT DEFAULT ''");
+}
 
 const getSetting = (k, dflt = '') => {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
@@ -171,6 +198,144 @@ if (countProducts === 0) {
   if (n > 0) console.log(`[db] ${n} couverture(s) restaurée(s).`);
 }
 
+// --- Synchronisation Amazon KDP (exécutée une seule fois par base) ---
+// Ajoute le lien Amazon Kindle aux ebooks déjà au catalogue et crée les titres
+// publiés uniquement sur KDP. Le drapeau évite de recréer un livre retiré depuis l'admin.
+if (getSetting('kdp_sync_v1') !== '1') {
+  const amazon = (asin) => ({ label: 'Amazon Kindle', url: `https://www.amazon.com/dp/${asin}` });
+  const KDP_EXISTING = {
+    'Komanse Lavi Ou Ozetazini': 'B0HMBNHMQX',
+    "Comment réussir l'examen pour devenir citoyen américain : Étape par étape": 'B0HBD6GC9H',
+    'Devenez interprète médical certifié en 7 semaines': 'B0HMQZ1KWB',
+  };
+  const updLinks = db.prepare('UPDATE products SET links = ? WHERE id = ?');
+  for (const r of db.prepare('SELECT id, title, links FROM products').all()) {
+    const asin = KDP_EXISTING[r.title];
+    if (!asin) continue;
+    let links = [];
+    try { links = JSON.parse(r.links || '[]'); } catch (e) {}
+    if (!links.some((l) => /amazon\./i.test(l.url))) {
+      links.unshift(amazon(asin));                       // Amazon en premier : plateforme la plus connue
+      updLinks.run(JSON.stringify(links), r.id);
+    }
+  }
+  const KDP_NEW = [{
+    title: 'Prime Again', type: 'ebook',
+    desc_fr: "Le plan en 10 leçons pour retrouver vitalité, énergie et confiance après 50 ans : hormones, nutrition, musculation, sommeil, vérités sur le Viagra et plan de retour en forme sur 90 jours. Ebook Kindle en anglais, 12,99 $US.",
+    desc_en: 'The 10-lesson blueprint to reclaim your vitality, energy and confidence after 50: hormones, nutrition, strength training, sleep, the truth about Viagra and a 90-day comeback plan. Kindle ebook, US$12.99.',
+    desc_ht: 'Plan 10 leson pou w jwenn fòs, enèji ak konfyans ou ankò apre 50 an : òmòn, nitrisyon, espò, dòmi, verite sou Viagra ak yon plan 90 jou. Ebook Kindle an anglè, 12,99 $US.',
+    desc_es: 'El plan de 10 lecciones para recuperar la vitalidad, la energía y la confianza después de los 50: hormonas, nutrición, fuerza, sueño, la verdad sobre el Viagra y un plan de 90 días. Ebook Kindle en inglés, 12,99 US$.',
+    image: '/img/covers/prime-again.jpg',
+    links: JSON.stringify([amazon('B0HMPXT94D')]),
+    version: '1.0',
+  }];
+  const exists = db.prepare('SELECT 1 FROM products WHERE title = ?');
+  const ins = db.prepare(`INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, links, version)
+    VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @links, @version)`);
+  for (const p of KDP_NEW) if (!exists.get(p.title)) ins.run(p);
+  setSetting('kdp_sync_v1', '1');
+}
+
+// --- Nouveaux titres Les Éditions LeVent (exécuté une seule fois par base) ---
+// Couverture + description uniquement : les fichiers PDF/EPUB ne sont jamais hébergés.
+// Les liens de vente s'ajoutent ensuite depuis l'admin (Modifier → Liens).
+if (getSetting('books_sync_v2') !== '1') {
+  const CARD_DESC = {
+    fr: "21 leçons pour aider ta famille et tes proches sans te ruiner ni couper les ponts : mesurer ce que tu donnes, dire non sans culpabilité, prêter sans perdre, déjouer les fausses urgences et transformer l'aide en autonomie. Plan 90 jours et outils à imprimer.",
+    en: '21 lessons to help family and friends without going broke or burning bridges: measure what you give, say no without guilt, lend without losing, spot fake emergencies and turn help into independence. 90-day plan and printable tools.',
+    ht: "21 leson pou w ede fanmi w ak zanmi w san w pa ruine tèt ou ni koupe ak yo : konte sa w bay, di non san kilpabilite, prete san w pa pèdi, rekonèt fo ijans epi fè èd la tounen otonomi. Plan 90 jou ak zouti pou enprime.",
+    es: '21 lecciones para ayudar a tu familia y amigos sin arruinarte ni romper lazos: medir lo que das, decir no sin culpa, prestar sin perder, detectar falsas urgencias y convertir la ayuda en autonomía. Plan de 90 días y herramientas imprimibles.',
+  };
+  const edition = (lang) => ({
+    fr: { fr: 'Édition française. ', en: 'French edition. ', ht: 'Edisyon an fransè. ', es: 'Edición en francés. ' },
+    ht: { fr: 'Édition en créole haïtien. ', en: 'Haitian Creole edition. ', ht: 'Edisyon an kreyòl. ', es: 'Edición en criollo haitiano. ' },
+    en: { fr: 'Édition anglaise. ', en: 'English edition. ', ht: 'Edisyon an anglè. ', es: 'Edición en inglés. ' },
+  })[lang];
+  const book = (title, lang, image) => {
+    const ed = edition(lang);
+    return {
+      title, type: 'ebook', image, links: '[]', version: '1.0',
+      desc_fr: ed.fr + CARD_DESC.fr, desc_en: ed.en + CARD_DESC.en,
+      desc_ht: ed.ht + CARD_DESC.ht, desc_es: ed.es + CARD_DESC.es,
+    };
+  };
+  const BOOKS_V2 = [
+    book('Suis-je la carte bancaire de mon entourage ?', 'fr', '/img/covers/carte-bancaire-fr.jpg'),
+    book('Èske Mwen Se Kat Bankè Antouraj Mwen ?', 'ht', '/img/covers/kat-banke-ht.jpg'),
+    book('Am I Everyone’s Bank Card?', 'en', '/img/covers/bank-card-en.jpg'),
+  ];
+  const exists2 = db.prepare('SELECT 1 FROM products WHERE title = ?');
+  const ins2 = db.prepare(`INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, links, version)
+    VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @links, @version)`);
+  for (const p of BOOKS_V2) if (!exists2.get(p.title)) ins2.run(p);
+  setSetting('books_sync_v2', '1');
+}
+
+// --- Catalogue LeVent : nouveaux livres + vidéos hébergées (exécuté une seule fois par base) ---
+if (getSetting('catalog_sync_v3') !== '1') {
+  const P = (o) => ({ links: '[]', version: '', media: '', image: '', ...o });
+  const ITEMS = [
+    P({ title: 'Lè Yon Moun Mouri Lòtbò', type: 'ebook', version: '1.0',
+      image: '/img/covers/lotbo-ht.jpg', media: '/videos/lancement-lotbo.mp4',
+      desc_fr: "Guide en créole haïtien pour rapatrier le corps d'un proche en Haïti, de A à Z : premières 48 heures, choix des pompes funèbres, papiers américains, consulat d'Haïti, transport aérien (situation 2026), coûts et aides, crémation, et comment se préparer à l'avance. 10 leçons. Ebook 16,99 $US · Pack Fanmi 27,99 $US.",
+      desc_en: "Haitian Creole guide to repatriating a loved one's body to Haiti, from A to Z: the first 48 hours, choosing a funeral home, U.S. paperwork, the Haitian consulate, air transport (2026 situation), costs and financial help, cremation and planning ahead. 10 lessons. Ebook US$16.99 · Family Pack US$27.99.",
+      desc_ht: 'Gid an kreyòl pou rapatriye kadav yon moun ou renmen ann Ayiti, de A a Z : premye 48 èdtan yo, chwazi bon fineray la, papye ameriken yo, konsila Ayiti, transpò pa avyon (sitiyasyon 2026), konbyen sa koute ak kote pou jwenn lajan, kremasyon, epi prepare davans. 10 leson. Ebook 16,99 $US · Pack Fanmi 27,99 $US.',
+      desc_es: 'Guía en criollo haitiano para repatriar el cuerpo de un ser querido a Haití, de la A a la Z: primeras 48 horas, funeraria, documentos de EE. UU., consulado de Haití, transporte aéreo (situación 2026), costos y ayudas, cremación y planificación anticipada. 10 lecciones. Ebook 16,99 US$ · Pack Familia 27,99 US$.' }),
+    P({ title: "L'Anglais Quotidien aux USA", type: 'ebook', version: '1.0', image: '/img/covers/anglais-quotidien.jpg',
+      desc_fr: "« Savoir c'est Pouvoir » : guide trilingue illustré (anglais, créole, français) de l'anglais de tous les jours et manuel de survie aux États-Unis — aéroport, logement, banque, supermarché, école, administration, phrasal verbs, expressions et faux-amis. 14,99 $US.",
+      desc_en: 'Knowledge is Power: an illustrated trilingual guide (English, Creole, French) to everyday English and a survival manual for life in the U.S. — airport, housing, banking, grocery store, school, government offices, phrasal verbs, idioms and false friends. US$14.99.',
+      desc_ht: 'Konesans se pouvwa : gid ilistre an twa lang (anglè, kreyòl, franse) pou anglè chak jou ak manyèl pou viv Ozetazini — ayewopò, lojman, bank, makèt, lekòl, biwo leta, phrasal verbs, ekspresyon ak fo zanmi. 14,99 $US.',
+      desc_es: 'Saber es poder: guía trilingüe ilustrada (inglés, criollo, francés) del inglés cotidiano y manual de supervivencia en EE. UU. — aeropuerto, vivienda, banco, supermercado, escuela, trámites, phrasal verbs, expresiones y falsos amigos. 14,99 US$.' }),
+    P({ title: 'Bouki et Malice', type: 'ebook', version: '1.0', image: '/img/covers/bouki-malice.jpg',
+      desc_fr: "Bèl kont pou timoun : 10 contes illustrés de Bouki et Ti Malice, en créole haïtien et en anglais — le gâteau disparu, la rivière, le marché, le tambour magique, la fête du village… Des histoires drôles et tendres qui transmettent partage, courage et goût de la lecture.",
+      desc_en: 'Beautiful Tales for Children: 10 illustrated Bouki and Ti Malice stories in Haitian Creole and English — the missing cake, the river, the market, the magic drum, the village festival… Funny, tender tales about sharing, courage and the joy of reading.',
+      desc_ht: 'Bèl kont pou timoun : 10 kont ilistre Bouki ak Ti Malis, an kreyòl ak an anglè — gato ki disparèt la, larivyè a, mache a, tanbou majik la, fèt nan vilaj la… Istwa ki fè ri epi ki aprann pataje, kouraj ak renmen li.',
+      desc_es: 'Bellos cuentos para niños: 10 cuentos ilustrados de Bouki y Ti Malice en criollo haitiano e inglés — el pastel desaparecido, el río, el mercado, el tambor mágico, la fiesta del pueblo… Historias divertidas y tiernas sobre compartir, el valor y el gusto por la lectura.' }),
+    P({ title: 'Ta nouvelle vie aux États-Unis', type: 'ebook', version: '1.0', image: '/img/covers/nouvelle-vie-fr.jpg',
+      desc_fr: "Guide pratique, étape par étape, pour bien démarrer aux États-Unis : premiers jours, numéro de sécurité sociale, logement, banque et crédit, travail, santé, école, transport, impôts, statut d'immigration et plan d'action 90 jours. Version française de « Komanse Lavi Ou Ozetazini ».",
+      desc_en: 'A practical step-by-step guide to starting out in the U.S.: first days, Social Security number, housing, banking and credit, work, health, school, transportation, taxes, immigration status and a 90-day action plan. French edition of "Komanse Lavi Ou Ozetazini".',
+      desc_ht: 'Gid pratik etap pa etap pou kòmanse sou bon pye Ozetazini : premye jou yo, nimewo sekirite sosyal, lojman, bank ak kredi, travay, sante, lekòl, transpò, taks, estati imigrasyon ak plan aksyon 90 jou. Vèsyon franse « Komanse Lavi Ou Ozetazini ».',
+      desc_es: 'Guía práctica paso a paso para empezar bien en EE. UU.: primeros días, número de seguro social, vivienda, banco y crédito, trabajo, salud, escuela, transporte, impuestos, estatus migratorio y plan de acción de 90 días. Edición francesa de «Komanse Lavi Ou Ozetazini».' }),
+    P({ title: 'Découvrez la collection Les Éditions LeVent', type: 'video',
+      image: '/videos/collection-levent.jpg', media: '/videos/collection-levent.mp4',
+      desc_fr: "Bande-annonce de la collection : guides pratiques, réussite aux États-Unis et contes pour enfants. Disponibles sur Shopify, Gumroad, Payhip et Amazon Kindle.",
+      desc_en: 'Collection trailer: practical guides, success in the U.S. and children\'s tales. Available on Shopify, Gumroad, Payhip and Amazon Kindle.',
+      desc_ht: 'Bann-anons koleksyon an : gid pratik, reyisit Ozetazini ak kont pou timoun. Disponib sou Shopify, Gumroad, Payhip ak Amazon Kindle.',
+      desc_es: 'Tráiler de la colección: guías prácticas, éxito en EE. UU. y cuentos infantiles. Disponibles en Shopify, Gumroad, Payhip y Amazon Kindle.' }),
+    P({ title: 'Voix off professionnelle', type: 'video',
+      image: '/videos/voix-off-fr.jpg', media: '/videos/voix-off-fr.mp4',
+      desc_fr: 'Service de voix off en français, créole ou anglais pour pubs TikTok, vidéos YouTube, présentations et livres audio. Voix naturelle, qualité studio, livraison rapide. 25 $US jusqu\'à 2 min · 45 $US jusqu\'à 5 min.',
+      desc_en: 'Voice-over service in French, Creole or English for TikTok ads, YouTube videos, presentations and audiobooks. Natural voice, studio quality, fast delivery. US$25 up to 2 min · US$45 up to 5 min.',
+      desc_ht: 'Sèvis vwa off an franse, kreyòl oswa anglè pou piblisite TikTok, videyo YouTube, prezantasyon ak liv odyo. Vwa natirèl, kalite estidyo, livrezon rapid. 25 $US jiska 2 minit · 45 $US jiska 5 minit.',
+      desc_es: 'Servicio de locución en francés, criollo o inglés para anuncios de TikTok, videos de YouTube, presentaciones y audiolibros. Voz natural, calidad de estudio, entrega rápida. 25 US$ hasta 2 min · 45 US$ hasta 5 min.' }),
+    P({ title: 'Vwa off pwofesyonèl (kreyòl)', type: 'video',
+      image: '/videos/vwa-off-ht.jpg', media: '/videos/vwa-off-ht.mp4',
+      desc_fr: 'Version créole de l\'offre voix off : voix off professionnelle en créole et en français pour vos vidéos. 25 $US jusqu\'à 2 min · 45 $US jusqu\'à 5 min.',
+      desc_en: 'Creole version of the voice-over offer: professional voice-over in Creole and French for your videos. US$25 up to 2 min · US$45 up to 5 min.',
+      desc_ht: 'Bezwen yon vwa pou videyo w ? Vwa off pwofesyonèl an kreyòl ak an franse pou piblisite TikTok ak videyo YouTube. Vwa natirèl, kalite estidyo. 25 $US jiska 2 minit · 45 $US jiska 5 minit.',
+      desc_es: 'Versión en criollo de la oferta de locución: voz en off profesional en criollo y francés para tus videos. 25 US$ hasta 2 min · 45 US$ hasta 5 min.' }),
+    P({ title: 'Scripts TikTok prêts à tourner', type: 'video',
+      image: '/videos/scripts-tiktok.jpg', media: '/videos/scripts-tiktok.mp4',
+      desc_fr: 'Vos vidéos TikTok ne décollent pas ? Scripts prêts à tourner avec accroche, légende et hashtags optimisés. 15 $US le script · 4 scripts pour 50 $US.',
+      desc_en: 'TikTok videos not taking off? Ready-to-film scripts with a hook, caption and optimized hashtags. US$15 per script · 4 scripts for US$50.',
+      desc_ht: 'Videyo TikTok ou yo pa dekole ? Script pare pou w tounen, ak bon kwochèt, lejann ak hashtag optimize. 15 $US pou yon script · 4 script pou 50 $US.',
+      desc_es: '¿Tus videos de TikTok no despegan? Guiones listos para grabar con gancho, descripción y hashtags optimizados. 15 US$ por guion · 4 guiones por 50 US$.' }),
+    P({ title: 'Des textes qui vendent', type: 'video',
+      image: '/videos/textes-qui-vendent.jpg', media: '/videos/textes-qui-vendent.mp4',
+      desc_fr: 'Vos textes ne vendent pas assez ? Rédaction de descriptions de produits, articles et pages qui donnent envie d\'acheter, en français, créole ou anglais. Description 20 $US · Article 35 $US · Page 75 $US. Devis gratuit.',
+      desc_en: 'Copy not selling enough? Product descriptions, articles and web pages that make people want to buy, in French, Creole or English. Description US$20 · Article US$35 · Page US$75. Free quote.',
+      desc_ht: 'Tèks ou yo pa vann ase ? Redaksyon deskripsyon pwodwi, atik ak paj ki bay moun anvi achte, an franse, kreyòl oswa anglè. Deskripsyon 20 $US · Atik 35 $US · Paj 75 $US. Devi gratis.',
+      desc_es: '¿Tus textos no venden lo suficiente? Redacción de descripciones de productos, artículos y páginas que dan ganas de comprar, en francés, criollo o inglés. Descripción 20 US$ · Artículo 35 US$ · Página 75 US$. Presupuesto gratis.' }),
+  ];
+  const exists3 = db.prepare('SELECT 1 FROM products WHERE title = ?');
+  const ins3 = db.prepare(`INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, media, links, version)
+    VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @media, @links, @version)`);
+  for (const p of ITEMS) if (!exists3.get(p.title)) ins3.run(p);
+  // Pub vidéo de Prime Again, affichée sur sa fiche.
+  db.prepare("UPDATE products SET media = '/videos/pub-prime-again.mp4' WHERE title = 'Prime Again' AND (media IS NULL OR media = '')").run();
+  setSetting('catalog_sync_v3', '1');
+}
+
 // --- Helpers ---
 function rowToProduct(r) {
   let links = [];
@@ -240,4 +405,22 @@ const setAppStatus = (app, status, detail = '') => {
               ON CONFLICT(app) DO UPDATE SET status = excluded.status, detail = excluded.detail, updated_at = excluded.updated_at`).run(app, status, detail);
 };
 const listAppStatus = () => db.prepare('SELECT * FROM app_status ORDER BY app').all();
-module.exports = { db, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus };
+
+// --- Limitation de débit persistante (survit aux redémarrages) ---
+const rateCount = (bucket, key, windowMs) =>
+  db.prepare('SELECT COUNT(*) n FROM rate_events WHERE bucket = ? AND key = ? AND at > ?')
+    .get(bucket, key, Date.now() - windowMs).n;
+const rateHit = (bucket, key) =>
+  db.prepare('INSERT INTO rate_events (bucket, key, at) VALUES (?, ?, ?)').run(bucket, key, Date.now());
+const rateClear = (bucket, key) =>
+  db.prepare('DELETE FROM rate_events WHERE bucket = ? AND key = ?').run(bucket, key);
+const ratePurge = (maxAgeMs = 24 * 3600 * 1000) =>
+  db.prepare('DELETE FROM rate_events WHERE at < ?').run(Date.now() - maxAgeMs);
+
+// --- Messages du formulaire de contact (conservés même sans canal de notification) ---
+const addContactMessage = (m) =>
+  db.prepare('INSERT INTO contact_messages (name, email, message, ip) VALUES (@name, @email, @message, @ip)').run(m);
+const listContactMessages = () => db.prepare('SELECT * FROM contact_messages ORDER BY id DESC LIMIT 500').all();
+const countContactMessages = () => db.prepare('SELECT COUNT(*) AS n FROM contact_messages').get().n;
+
+module.exports = { db, DATA_DIR, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus, rateCount, rateHit, rateClear, ratePurge, addContactMessage, listContactMessages, countContactMessages };

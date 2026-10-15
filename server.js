@@ -13,6 +13,8 @@ const { middleware: csrf, verify: csrfVerify } = require('./csrf');
 const ai = require('./ai');
 const watchdog = require('./watchdog');
 const notify = require('./notify');
+const SqliteStore = require('./session-store');
+const publish = require('./publish');
 
 // Les couvertures sont versionnées en base64 (*.jpg.b64) car certains modes de
 // déploiement ne transportent pas le binaire. On les restaure en .jpg au démarrage.
@@ -41,17 +43,54 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const SITE_URL = (process.env.SITE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
+// Uploads d'images produits : sur le disque persistant (à côté de la base),
+// sinon ils seraient effacés à chaque redéploiement Render.
+const uploadDir = path.join(dbm.DATA_DIR, 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+// Migration : les anciens uploads de public/uploads sont recopiés sur le disque persistant.
+(function migrateUploads() {
+  const oldDir = path.join(__dirname, 'public', 'uploads');
+  if (!fs.existsSync(oldDir) || path.resolve(oldDir) === path.resolve(uploadDir)) return;
+  for (const f of fs.readdirSync(oldDir)) {
+    if (f.startsWith('.')) continue;
+    const target = path.join(uploadDir, f);
+    if (!fs.existsSync(target)) {
+      try { fs.copyFileSync(path.join(oldDir, f), target); console.log('[uploads] migré:', f); } catch (e) {}
+    }
+  }
+})();
+// Chemin disque d'une image « /uploads/xxx » (basename : pas de remontée de dossier).
+function uploadFilePath(image) {
+  return path.join(uploadDir, path.basename(String(image || '')));
+}
+
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.disable('x-powered-by');
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(uploadDir));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(express.json({ limit: '2mb' }));
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('[sécurité] SESSION_SECRET non défini : secret par défaut utilisé. À définir avant toute mise en ligne.');
+}
 app.use(session({
+  store: new SqliteStore(dbm.db),
   secret: process.env.SESSION_SECRET || 'changez-moi-en-production',
   resave: false, saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax', secure: SITE_URL.startsWith('https://'), maxAge: 12 * 3600 * 1000 },
 }));
+
+// Connecte l'admin dans une session NEUVE (anti-fixation de session).
+function loginAdmin(req, res, next, redirectTo = '/admin') {
+  req.session.regenerate((err) => {
+    if (err) return next(err);
+    req.session.admin = true;
+    req.session.save((err2) => (err2 ? next(err2) : res.redirect(redirectTo)));
+  });
+}
 app.use(i18n);
 app.use(csrf);
 
@@ -63,17 +102,48 @@ app.use((req, res, next) => {
   next();
 });
 
-// Upload d'images produits.
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// Upload d'images et de vidéos (dossier persistant défini plus haut).
+// Les PDF/EPUB d'ebooks ne sont jamais acceptés : les ventes restent protégées.
+const IMAGE_MAX = 5 * 1024 * 1024, VIDEO_MAX = 80 * 1024 * 1024;
+const IMAGE_RE = /^image\/(png|jpe?g|webp|gif)$/i, VIDEO_RE = /^video\/(mp4|webm|quicktime)$/i;
 const storage = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 5);
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1e6) + (/^\.(png|jpe?g|webp|gif)$/.test(ext) ? ext : '.png'));
+    const safe = file.fieldname === 'video'
+      ? (/^\.(mp4|webm|mov)$/.test(ext) ? ext : '.mp4')
+      : (/^\.(png|jpe?g|webp|gif)$/.test(ext) ? ext : '.png');
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1e6) + safe);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const multerMedia = multer({
+  storage,
+  limits: { fileSize: VIDEO_MAX },
+  fileFilter: (req, file, cb) => cb(null, file.fieldname === 'video'
+    ? VIDEO_RE.test(file.mimetype || '') : IMAGE_RE.test(file.mimetype || '')),
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
+// Expose req.file (image) et req.videoFile ; une image > 5 Mo est refusée.
+function upload(req, res, next) {
+  multerMedia(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Fichier trop lourd (vidéo : 80 Mo maximum).' : 'Envoi du fichier impossible.';
+      return res.status(413).send(msg + ' <a href="javascript:history.back()">Retour</a>');
+    }
+    const files = req.files || {};
+    req.file = files.image && files.image[0];
+    req.videoFile = files.video && files.video[0];
+    if (req.file && req.file.size > IMAGE_MAX) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      if (req.videoFile) { try { fs.unlinkSync(req.videoFile.path); } catch (e) {} }
+      return res.status(413).send('Image trop lourde (5 Mo maximum). <a href="javascript:history.back()">Retour</a>');
+    }
+    next();
+  });
+}
+// Supprime un fichier envoyé (image ou vidéo) s'il vient de /uploads/.
+function removeUpload(webPath) {
+  if (webPath && String(webPath).startsWith('/uploads/')) { try { fs.unlinkSync(uploadFilePath(webPath)); } catch (e) {} }
+}
 
 // ---------- Helpers ----------
 function parseLinksTextarea(text) {
@@ -98,6 +168,7 @@ app.use((req, res, next) => {
   res.locals.descFor = descFor;
   res.locals.isAdmin = !!req.session.admin;
   res.locals.contactEmail = process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com';
+  res.locals.publisherEmail = process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com';
   res.locals.currentPath = req.path;
   next();
 });
@@ -145,7 +216,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/catalogue', (req, res) => {
-  const filter = ['app', 'ebook', 'autre'].includes(req.query.type) ? req.query.type : '';
+  const filter = publish.TYPES.includes(req.query.type) ? req.query.type : '';
   const q = String(req.query.q || '').trim().toLowerCase();
   let products = filter
     ? dbm.qByType.all(filter).map(dbm.rowToProduct)
@@ -166,7 +237,8 @@ app.get('/produit/:id', (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
   if (!p || !p.active) return res.status(404).render('404', { page: '' });
   const related = dbm.qAll.all().map(dbm.rowToProduct).filter((x) => x.id !== p.id).slice(0, 3);
-  res.render('produit', { page: 'produit', product: p, related });
+  const embed = !p.media && p.type === 'video' ? publish.firstVideoEmbed(p.links) : null;
+  res.render('produit', { page: 'produit', product: p, related, embed });
 });
 
 // Redirection comptée vers une plateforme externe.
@@ -181,15 +253,36 @@ app.get('/go/:id/:index', (req, res) => {
 app.get('/confidentialite', (req, res) => res.render('legal', { page: 'confidentialite', doc: 'privacy' }));
 app.get('/propriete-intellectuelle', (req, res) => res.render('legal', { page: 'propriete', doc: 'ip' }));
 app.get('/conditions', (req, res) => res.render('legal', { page: 'conditions', doc: 'terms' }));
-app.get('/contact', (req, res) => res.render('contact', { page: 'contact', sent: false }));
-app.post('/contact', async (req, res) => {
-  const name = String(req.body.name || '').trim();
-  const email = String(req.body.email || '').trim();
-  const message = String(req.body.message || '').trim();
-  if (name && email && message) {
-    notify.sendAll('Nouveau message de contact', `Nom: ${name}\nEmail: ${email}\n\n${message}`).catch(() => {});
+// Anti-spam contact : champ piège invisible + 3 messages/heure par IP + 30/heure au total.
+const CONTACT_IP_MAX = 3, CONTACT_ALL_MAX = 30, CONTACT_WINDOW = 3600 * 1000;
+const renderContact = (res, extra = {}) =>
+  res.render('contact', { page: 'contact', status: null, form: {}, ...extra });
+
+app.get('/contact', (req, res) => renderContact(res));
+app.post('/contact', (req, res) => {
+  const form = {
+    name: String(req.body.name || '').trim().slice(0, 100),
+    email: String(req.body.email || '').trim().slice(0, 200),
+    message: String(req.body.message || '').trim().slice(0, 5000),
+  };
+  // Un robot remplit le champ piège « website » : on fait semblant d'accepter, sans rien envoyer.
+  if (String(req.body.website || '').trim()) return renderContact(res, { status: 'sent' });
+
+  if (!form.name || !form.message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    return res.status(400).render('contact', { page: 'contact', status: 'invalid', form });
   }
-  res.render('contact', { page: 'contact', sent: true });
+  const ip = req.ip || 'unknown';
+  if (dbm.rateCount('contact_ip', ip, CONTACT_WINDOW) >= CONTACT_IP_MAX
+    || dbm.rateCount('contact_all', '*', CONTACT_WINDOW) >= CONTACT_ALL_MAX) {
+    return res.status(429).render('contact', { page: 'contact', status: 'limited', form });
+  }
+  dbm.rateHit('contact_ip', ip);
+  dbm.rateHit('contact_all', '*');
+
+  // Toujours conservé en base (consultable dans /admin/messages), puis notifié si un canal existe.
+  dbm.addContactMessage({ ...form, ip });
+  notify.sendAll('Nouveau message de contact', `Nom: ${form.name}\nEmail: ${form.email}\n\n${form.message}`).catch(() => {});
+  renderContact(res, { status: 'sent' });
 });
 
 // ---------- Newsletter ----------
@@ -244,20 +337,33 @@ function requireLogin(req, res, next) {
   next();
 }
 
-const loginAttempts = new Map();
+// Anti-force brute, stocké en base (survit aux redémarrages) :
+// 5 échecs / 15 min par IP, et 30 échecs / heure tous visiteurs confondus.
+const ADMIN_CODE_RE = /^\d{4}$/; // code admin : exactement 4 chiffres (choix du PDG)
+
+// Réinitialisation du code admin sans connaître l'ancien : définir ADMIN_CODE_RESET=1234
+// (4 chiffres) dans l'environnement Render, redémarrer, puis RETIRER la variable.
+(function resetAdminCodeFromEnv() {
+  const v = String(process.env.ADMIN_CODE_RESET || '').trim();
+  if (!v) return;
+  if (!ADMIN_CODE_RE.test(v)) { console.warn('[admin] ADMIN_CODE_RESET ignoré : 4 chiffres attendus.'); return; }
+  dbm.setSetting('admin_code_hash', bcrypt.hashSync(v, 10));
+  dbm.db.prepare('DELETE FROM sessions').run();          // déconnecte toutes les sessions ouvertes
+  dbm.db.prepare("DELETE FROM rate_events WHERE bucket LIKE 'login_%'").run();
+  console.warn('[admin] Code admin réinitialisé via ADMIN_CODE_RESET — retirez cette variable maintenant.');
+})();
+const LOGIN_IP_MAX = 5, LOGIN_IP_WINDOW = 15 * 60 * 1000;
+const LOGIN_ALL_MAX = 30, LOGIN_ALL_WINDOW = 3600 * 1000;
 function loginBlocked(req) {
-  const key = req.ip || 'unknown';
-  const now = Date.now();
-  const list = (loginAttempts.get(key) || []).filter((t) => now - t < 15 * 60 * 1000);
-  loginAttempts.set(key, list);
-  return list.length >= 5;
+  return dbm.rateCount('login_ip', req.ip || 'unknown', LOGIN_IP_WINDOW) >= LOGIN_IP_MAX
+    || dbm.rateCount('login_all', '*', LOGIN_ALL_WINDOW) >= LOGIN_ALL_MAX;
 }
 function loginFailed(req) {
-  const key = req.ip || 'unknown';
-  const list = loginAttempts.get(key) || [];
-  list.push(Date.now());
-  loginAttempts.set(key, list);
+  dbm.rateHit('login_ip', req.ip || 'unknown');
+  dbm.rateHit('login_all', '*');
 }
+const ratePurgeTimer = setInterval(() => { try { dbm.ratePurge(); } catch (e) {} }, 3600 * 1000);
+if (ratePurgeTimer.unref) ratePurgeTimer.unref();
 
 app.get('/admin', (req, res) => {
   if (!hasSecret()) return res.render('admin/setup', { page: 'admin', error: null });
@@ -275,36 +381,33 @@ app.get('/admin', (req, res) => {
   });
 });
 
-app.post('/admin/setup', (req, res) => {
+app.post('/admin/setup', (req, res, next) => {
   if (hasSecret()) return res.redirect('/admin');
   const code = String(req.body.code || ''), confirm = String(req.body.confirm || '');
-  if (code.length < 6)
+  if (!ADMIN_CODE_RE.test(code))
     return res.render('admin/setup', { page: 'admin', error: res.locals.t('admin_setup_error_short') });
   if (code !== confirm)
     return res.render('admin/setup', { page: 'admin', error: res.locals.t('admin_setup_error_mismatch') });
   dbm.setSetting('admin_code_hash', bcrypt.hashSync(code, 10));
-  req.session.admin = true;
-  res.redirect('/admin');
+  loginAdmin(req, res, next);
 });
 
-app.post('/admin/login', (req, res) => {
+app.post('/admin/login', (req, res, next) => {
   if (!hasSecret()) return res.redirect('/admin');
   if (loginBlocked(req)) {
-    return res.render('admin/login', { page: 'admin', error: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+    return res.status(429).render('admin/login', { page: 'admin', error: 'Trop de tentatives. Réessayez dans quelques minutes.' });
   }
   const hash = dbm.getSetting('admin_code_hash');
   if (bcrypt.compareSync(String(req.body.code || ''), hash)) {
-    loginAttempts.delete(req.ip || 'unknown');
-    req.session.admin = true;
-    return res.redirect('/admin');
+    dbm.rateClear('login_ip', req.ip || 'unknown');
+    return loginAdmin(req, res, next);
   }
   loginFailed(req);
   res.render('admin/login', { page: 'admin', error: res.locals.t('admin_login_error') });
 });
 
 app.post('/admin/logout', requireLogin, (req, res) => {
-  req.session.admin = false;
-  res.redirect('/');
+  req.session.destroy(() => res.redirect('/'));
 });
 
 app.get('/admin/change-code', requireLogin, (req, res) => {
@@ -312,14 +415,14 @@ app.get('/admin/change-code', requireLogin, (req, res) => {
 });
 
 app.post('/admin/change-code', requireLogin, (req, res) => {
-  const current = String(req.body.current_code || '').trim();
-  const code = String(req.body.code || '').trim();
-  const confirm = String(req.body.confirm || '').trim();
+  const current = String(req.body.current_code || '');
+  const code = String(req.body.code || '');
+  const confirm = String(req.body.confirm || '');
   const hash = dbm.getSetting('admin_code_hash');
   const renderError = (error) => res.render('admin/change_code', { page: 'admin', error, changed: false });
 
   if (!bcrypt.compareSync(current, hash)) return renderError('Code actuel incorrect.');
-  if (!/^\d{4}$/.test(code)) return renderError('Le nouveau code doit contenir exactement 4 chiffres.');
+  if (!ADMIN_CODE_RE.test(code)) return renderError('Le nouveau code doit contenir exactement 4 chiffres.');
   if (code !== confirm) return renderError('Les deux nouveaux codes ne correspondent pas.');
 
   dbm.setSetting('admin_code_hash', bcrypt.hashSync(code, 10));
@@ -335,25 +438,84 @@ app.post('/admin/toggle-site', requireLogin, (req, res) => {
   res.redirect('/admin');
 });
 
+// ---------- Admin : « Ajouter » universel (lien et/ou image -> publication automatique) ----------
+app.get('/admin/add', requireLogin, (req, res) => {
+  res.render('admin/add', { page: 'admin', error: null, form: {} });
+});
+
+app.post('/admin/add', requireLogin, upload, csrfVerify, async (req, res, next) => {
+  try {
+    const b = req.body;
+    const form = {
+      url: String(b.url || '').trim(),
+      extra_links: String(b.extra_links || ''),
+      title: String(b.title || '').trim().slice(0, 200),
+      notes: String(b.notes || '').trim().slice(0, 2000),
+      type: String(b.type || 'auto'),
+    };
+    if (form.url && !/^https?:\/\//i.test(form.url)) form.url = 'https://' + form.url;
+    if (!form.url && !req.file && !req.videoFile && !form.title) {
+      return res.status(400).render('admin/add', { page: 'admin', form,
+        error: 'Ajoute au moins un lien, une image, une vidéo ou un titre.' });
+    }
+
+    const meta = form.url ? await publish.fetchMeta(form.url) : { title: '', description: '', image: '' };
+    const media = req.videoFile ? '/uploads/' + req.videoFile.filename : '';
+    const type = publish.TYPES.includes(form.type) ? form.type
+      : (media && !form.url ? 'video' : publish.guessType(form.url, !!req.file));
+    const title = form.title || meta.title
+      || publish.titleFromFilename((req.file && req.file.originalname) || (req.videoFile && req.videoFile.originalname))
+      || await publish.suggestTitle({ type, notes: form.notes }) || 'Nouvelle publication';
+    const noTitle = title === 'Nouvelle publication';
+    let image = req.file ? '/uploads/' + req.file.filename : '';
+    if (!image && meta.image) {                                   // copie locale du visuel du lien
+      const saved = await publish.downloadImage(meta.image, uploadDir);
+      image = saved ? '/uploads/' + saved : meta.image;
+    }
+
+    const links = [];
+    if (form.url) links.push({ label: publish.linkLabel(form.url), url: form.url });
+    for (const l of parseLinksTextarea(form.extra_links)) links.push(l);
+    for (const line of form.extra_links.split('\n')) {            // lignes « juste une URL » acceptées aussi
+      const u = line.trim();
+      if (/^https?:\/\/\S+$/i.test(u) && !links.some((x) => x.url === u)) links.push({ label: publish.linkLabel(u), url: u });
+    }
+
+    const { desc, aiUsed } = await publish.describeAllLangs({ title, type, sourceText: meta.description, notes: form.notes });
+
+    const info = dbm.db.prepare(`
+      INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, media, links, version, active)
+      VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @media, @links, @version, 1)
+    `).run({
+      title, type,
+      desc_fr: desc.fr || '', desc_en: desc.en || '', desc_ht: desc.ht || '', desc_es: desc.es || '',
+      image, media, links: JSON.stringify(links), version: type === 'app' ? '1.0' : '',
+    });
+    watchdog.fire('product_added', 'Publication ajoutée', `« ${title} » (${type}) a été publiée.`).catch(() => {});
+    res.redirect(`/admin/products/${info.lastInsertRowid}/edit?added=1${aiUsed ? '' : '&noai=1'}${noTitle ? '&notitle=1' : ''}`);
+  } catch (e) { next(e); }
+});
+
 // ---------- Admin : CRUD produits ----------
 app.get('/admin/products/new', requireLogin, (req, res) => {
   res.render('admin/product_form', { page: 'admin', product: null, linksText: '' });
 });
 
-app.post('/admin/products', requireLogin, upload.single('image'), csrfVerify, (req, res) => {
+app.post('/admin/products', requireLogin, upload, csrfVerify, (req, res) => {
   const b = req.body;
   const title = String(b.title || '').trim();
   dbm.db.prepare(`
-    INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, links, version, active)
-    VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @links, @version, @active)
+    INSERT INTO products (title, type, desc_fr, desc_en, desc_ht, desc_es, image, media, links, version, active)
+    VALUES (@title, @type, @desc_fr, @desc_en, @desc_ht, @desc_es, @image, @media, @links, @version, @active)
   `).run({
     title,
-    type: ['app', 'ebook', 'autre'].includes(b.type) ? b.type : 'autre',
+    type: publish.TYPES.includes(b.type) ? b.type : 'autre',
     desc_fr: String(b.desc_fr || ''), desc_en: String(b.desc_en || ''),
     desc_ht: String(b.desc_ht || ''), desc_es: String(b.desc_es || ''),
     image: req.file ? '/uploads/' + req.file.filename : '',
+    media: req.videoFile ? '/uploads/' + req.videoFile.filename : '',
     links: JSON.stringify(parseLinksTextarea(b.links)),
-    version: String(b.version || '').trim() || '1.0',
+    version: String(b.version || '').trim(),
     active: b.active ? 1 : 0,
   });
   watchdog.fire('product_added', 'Produit ajouté', `« ${title} » a été ajouté au catalogue.`).catch(() => {});
@@ -363,29 +525,40 @@ app.post('/admin/products', requireLogin, upload.single('image'), csrfVerify, (r
 app.get('/admin/products/:id/edit', requireLogin, (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
   if (!p) return res.status(404).render('404', { page: '' });
-  res.render('admin/product_form', { page: 'admin', product: p, linksText: linksToTextarea(p.links) });
+  res.render('admin/product_form', {
+    page: 'admin', product: p, linksText: linksToTextarea(p.links),
+    justAdded: req.query.added === '1', noAi: req.query.noai === '1', noTitle: req.query.notitle === '1',
+  });
 });
 
-app.post('/admin/products/:id', requireLogin, upload.single('image'), csrfVerify, (req, res) => {
+app.post('/admin/products/:id', requireLogin, upload, csrfVerify, (req, res) => {
   const p = dbm.qById.get(req.params.id);
   if (!p) return res.status(404).render('404', { page: '' });
   const b = req.body;
   let image = p.image;
   if (req.file) {
-    if (image && image.startsWith('/uploads/')) { try { fs.unlinkSync(path.join(__dirname, 'public', image)); } catch (e) {} }
+    removeUpload(image);
     image = '/uploads/' + req.file.filename;
+  }
+  let media = p.media || '';
+  if (req.videoFile) {
+    removeUpload(media);
+    media = '/uploads/' + req.videoFile.filename;
+  } else if (b.remove_media) {
+    removeUpload(media);
+    media = '';
   }
   dbm.db.prepare(`
     UPDATE products SET title=@title, type=@type, desc_fr=@desc_fr, desc_en=@desc_en,
-      desc_ht=@desc_ht, desc_es=@desc_es, image=@image, links=@links, version=@version, active=@active
+      desc_ht=@desc_ht, desc_es=@desc_es, image=@image, media=@media, links=@links, version=@version, active=@active
     WHERE id=@id
   `).run({
     id: p.id, title: String(b.title || '').trim(),
-    type: ['app', 'ebook', 'autre'].includes(b.type) ? b.type : 'autre',
+    type: publish.TYPES.includes(b.type) ? b.type : 'autre',
     desc_fr: String(b.desc_fr || ''), desc_en: String(b.desc_en || ''),
     desc_ht: String(b.desc_ht || ''), desc_es: String(b.desc_es || ''),
-    image, links: JSON.stringify(parseLinksTextarea(b.links)),
-    version: String(b.version || '').trim() || '1.0',
+    image, media, links: JSON.stringify(parseLinksTextarea(b.links)),
+    version: String(b.version || '').trim(),
     active: b.active ? 1 : 0,
   });
   res.redirect('/admin');
@@ -394,7 +567,8 @@ app.post('/admin/products/:id', requireLogin, upload.single('image'), csrfVerify
 app.post('/admin/products/:id/delete', requireLogin, (req, res) => {
   const p = dbm.qById.get(req.params.id);
   if (p) {
-    if (p.image && p.image.startsWith('/uploads/')) { try { fs.unlinkSync(path.join(__dirname, 'public', p.image)); } catch (e) {} }
+    removeUpload(p.image);
+    removeUpload(p.media);
     dbm.db.prepare('DELETE FROM products WHERE id = ?').run(p.id);
     watchdog.fire('product_removed', 'Produit retiré', `« ${p.title} » a été retiré du catalogue.`).catch(() => {});
   }
@@ -538,6 +712,14 @@ app.get('/admin/newsletter.csv', requireLogin, (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="newsletter-lesly-tech-llc.csv"');
   res.send('\ufeff' + csv);
+});
+// ---------- Admin : messages du formulaire de contact ----------
+app.get('/admin/messages', requireLogin, (req, res) => {
+  res.render('admin/messages', {
+    page: 'admin',
+    messages: dbm.listContactMessages(),
+    count: dbm.countContactMessages(),
+  });
 });
 // ---------- Admin : notifications / watchdog ----------
 const CRED_FIELDS = [

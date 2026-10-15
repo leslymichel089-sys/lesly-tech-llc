@@ -7,10 +7,10 @@
   <form method="post" action="/admin/setup" class="form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label><%= t('admin_setup_code') %>
-      <input type="password" name="code" required minlength="6" autocomplete="new-password">
+      <input type="password" name="code" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password">
     </label>
     <label><%= t('admin_setup_confirm') %>
-      <input type="password" name="confirm" required minlength="6" autocomplete="new-password">
+      <input type="password" name="confirm" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password">
     </label>
     <p class="muted small"><%= t('admin_setup_hint') %></p>
     <button class="btn" type="submit"><%= t('admin_setup_submit') %></button>

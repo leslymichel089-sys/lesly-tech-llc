@@ -1,8 +1,15 @@
 <%- include('partials/header') %>
 
+<% var hostedVideo = product.media && product.type === 'video'; %>
 <article class="product-detail reveal">
-  <div class="detail-media">
-    <% if (product.image) { %>
+  <div class="detail-media<%= embed ? ' detail-media-video' : '' %><%= hostedVideo ? ' detail-media-file' : '' %>">
+    <% if (hostedVideo) { %>
+      <video src="<%= product.media %><%= product.image ? '' : '#t=0.5' %>" controls playsinline preload="metadata"<% if (product.image) { %> poster="<%= product.image %>"<% } %>></video>
+    <% } else if (embed) { %>
+      <iframe src="<%= embed %>" title="<%= product.title %>" loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <% } else if (product.image) { %>
       <img src="<%= product.image %>" alt="<%= product.title %>">
     <% } else { %>
       <div class="card-ph card-ph-big" aria-hidden="true"><span><%= product.title.charAt(0).toUpperCase() %></span></div>
@@ -11,7 +18,7 @@
   <div class="detail-body">
     <a class="back-link" href="/catalogue">← <%= t('nav_catalogue') %></a>
     <div class="card-tags">
-      <span class="tag tag-type"><%= t('type_' + (product.type === 'app' ? 'app' : product.type === 'ebook' ? 'ebook' : 'autre')) %></span>
+      <span class="tag tag-type"><%= t('type_' + (['app', 'ebook', 'video', 'image'].indexOf(product.type) >= 0 ? product.type : 'autre')) %></span>
       <% if (product.version) { %><span class="tag"><%= t('badge_version') %> <%= product.version %></span><% } %>
       <% if (product.update_available) { %><span class="tag tag-update"><%= t('badge_update') %></span><% } %>
     </div>
@@ -24,9 +31,22 @@
           <a class="btn" href="/go/<%= product.id %>/<%= i %>" target="_blank" rel="noopener"><%= l.label %> ↗</a>
         <% }) %>
       </div>
+    <% } else { %>
+      <div class="links-list detail-cta">
+        <a class="btn" href="/contact"><%= t('nav_contact') %> →</a>
+        <a class="btn btn-ghost" href="/catalogue"><%= t('nav_catalogue') %></a>
+      </div>
     <% } %>
   </div>
 </article>
+
+<% if (product.media && !hostedVideo) { %>
+<section class="section detail-video reveal">
+  <h2 class="sec-title">▶ <%= t('type_video') %></h2>
+  <% var mediaPoster = /^\/videos\/.+\.mp4$/.test(product.media) ? product.media.replace(/\.mp4$/, '.jpg') : ''; %>
+  <video src="<%= product.media %><%= mediaPoster ? '' : '#t=0.5' %>" controls playsinline preload="metadata"<% if (mediaPoster) { %> poster="<%= mediaPoster %>"<% } %>></video>
+</section>
+<% } %>
 
 <% if (related && related.length) { %>
 <section class="section">
@@ -40,8 +60,18 @@
 <% } %>
 
 <%
-var schema = { '@context': 'https://schema.org', name: product.title, description: descFor(product, lang), image: product.image || (siteUrl + '/img/covers/viktor.jpg') };
-if (product.type === 'ebook') {
+var absImg = product.image ? (/^https?:/.test(product.image) ? product.image : siteUrl + product.image) : (siteUrl + '/img/covers/viktor.jpg');
+var schema = { '@context': 'https://schema.org', name: product.title, description: descFor(product, lang), image: absImg };
+if (product.type === 'video') {
+  schema['@type'] = 'VideoObject';
+  schema.thumbnailUrl = absImg;
+  schema.uploadDate = String(product.created_at || '').slice(0, 10);
+  if (embed) schema.embedUrl = embed;
+  if (product.media) schema.contentUrl = siteUrl + product.media;
+} else if (product.type === 'image') {
+  schema['@type'] = 'ImageObject';
+  schema.contentUrl = absImg;
+} else if (product.type === 'ebook') {
   schema['@type'] = 'Book';
   schema.author = { '@type': 'Organization', name: 'Lesly Tech LLC' };
 } else if (product.type === 'app') {

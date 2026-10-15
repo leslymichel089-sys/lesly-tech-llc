@@ -1,0 +1,96 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Ajouter une publication</h1>
+  <p class="muted">Colle un lien, dépose une image et/ou une vidéo : le site devine le type, récupère le titre et le visuel, fait rédiger la description en 4 langues par l'IA, puis publie.</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <a class="btn btn-small btn-ghost" href="/admin/products/new">Formulaire détaillé</a>
+  </div>
+</section>
+
+<% if (error) { %><p class="alert alert-error" role="alert"><%= error %></p><% } %>
+
+<form method="post" action="/admin/add" enctype="multipart/form-data" class="form form-wide add-form" id="add-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <section class="dash-panel">
+    <label>Lien de la publication
+      <input type="text" name="url" inputmode="url" autocomplete="off" autofocus
+             placeholder="YouTube, TikTok, Payhip, Gumroad, Google Play, Shopify, ou toute page web…"
+             value="<%= form.url || '' %>">
+    </label>
+
+    <label class="dropzone" id="dropzone">
+      <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" id="add-image">
+      <img id="add-preview" alt="" hidden>
+      <span class="dropzone-text" id="dropzone-text">
+        <strong>Dépose une image ici</strong> ou clique pour choisir<br>
+        <span class="muted small">Couverture d'ebook, visuel, capture… (PNG, JPG, WebP, GIF — 5 Mo max). Facultatif si le lien a déjà un visuel.</span>
+      </span>
+    </label>
+
+    <label class="video-pick">🎬 Vidéo à héberger sur le site (facultatif)
+      <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" id="add-video">
+      <span class="muted small">MP4 ou WebM, 80 Mo max. Pour une vidéo longue, préfère un lien YouTube/TikTok ci-dessus. L'image ci-dessus sert d'affiche.</span>
+    </label>
+  </section>
+
+  <details class="dash-panel add-options" <%= (form.title || form.notes || form.extra_links || (form.type && form.type !== 'auto')) ? 'open' : '' %>>
+    <summary>Options (facultatif)</summary>
+    <div class="form-row">
+      <label>Titre
+        <input type="text" name="title" maxlength="200" placeholder="Détecté automatiquement" value="<%= form.title || '' %>">
+      </label>
+      <label>Type
+        <select name="type">
+          <% [['auto','Détection automatique'],['ebook',t('type_ebook')],['video',t('type_video')],['image',t('type_image')],['app',t('type_app')],['autre',t('type_autre')]].forEach(function(o){ %>
+            <option value="<%= o[0] %>" <%= (form.type || 'auto') === o[0] ? 'selected' : '' %>><%= o[1] %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+    <label>Notes pour l'IA
+      <textarea name="notes" rows="3" maxlength="2000" placeholder="Ex. : guide de 200 pages en créole, prix 14,99 $, pour les nouveaux arrivants…"><%= form.notes || '' %></textarea>
+    </label>
+    <label>Autres liens de vente
+      <textarea name="extra_links" rows="3" placeholder="Une URL par ligne, ou « Libellé | https://… »"><%= form.extra_links || '' %></textarea>
+    </label>
+  </details>
+
+  <div class="form-actions">
+    <button class="btn btn-big" type="submit" id="add-submit" data-working="Publication en cours… (récupération du lien et rédaction IA)">＋ Publier automatiquement</button>
+  </div>
+</form>
+
+<script>
+(function () {
+  var input = document.getElementById('add-image');
+  var zone = document.getElementById('dropzone');
+  var preview = document.getElementById('add-preview');
+  var text = document.getElementById('dropzone-text');
+  function show(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    var r = new FileReader();
+    r.onload = function (e) { preview.src = e.target.result; preview.hidden = false; text.hidden = true; };
+    r.readAsDataURL(file);
+  }
+  input.addEventListener('change', function () { show(input.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('is-over'); });
+  });
+  zone.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; show(input.files[0]); }
+  });
+  document.getElementById('add-form').addEventListener('submit', function () {
+    var b = document.getElementById('add-submit');
+    b.disabled = true; b.textContent = b.getAttribute('data-working');
+  });
+})();
+</script>
+
+<%- include('../partials/footer') %>

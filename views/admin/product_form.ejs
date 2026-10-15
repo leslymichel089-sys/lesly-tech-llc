@@ -2,7 +2,21 @@
 
 <section class="page-head">
   <h1><%= product ? t('admin_form_title_edit') : t('admin_form_title_new') %></h1>
+  <% if (product) { %>
+    <div class="dash-actions">
+      <a class="btn btn-small btn-ghost" href="/produit/<%= product.id %>" target="_blank">Voir sur le site ↗</a>
+      <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    </div>
+  <% } %>
 </section>
+
+<% if (locals.justAdded) { %>
+  <p class="alert alert-ok" role="status">
+    Publication en ligne ! Vérifie le titre, la description et l'image ci-dessous, puis enregistre si tu modifies quelque chose.
+    <% if (locals.noTitle) { %><br><strong>Titre à compléter :</strong> la page du lien est protégée (ex. Payhip) et aucune note n'a été donnée.<% } %>
+    <% if (locals.noAi) { %><br>L'IA n'a pas répondu (clés DeepSeek/Kimi absentes ou en échec) : la description vient de la page du lien, en français seulement.<% } %>
+  </p>
+<% } %>
 
 <form method="post" action="<%= product ? '/admin/products/' + product.id : '/admin/products' %>"
       enctype="multipart/form-data" class="form form-wide">
@@ -17,6 +31,8 @@
       <select name="type">
         <option value="app" <%= product && product.type === 'app' ? 'selected' : '' %>><%= t('type_app') %></option>
         <option value="ebook" <%= product && product.type === 'ebook' ? 'selected' : (!product ? 'selected' : '') %>><%= t('type_ebook') %></option>
+        <option value="video" <%= product && product.type === 'video' ? 'selected' : '' %>><%= t('type_video') %></option>
+        <option value="image" <%= product && product.type === 'image' ? 'selected' : '' %>><%= t('type_image') %></option>
         <option value="autre" <%= product && product.type === 'autre' ? 'selected' : '' %>><%= t('type_autre') %></option>
       </select>
     </label>
@@ -65,6 +81,14 @@
       <span class="muted small"><%= t('f_image_current') %> : <a href="<%= product.image %>" target="_blank"><%= product.image %></a></span>
     <% } %>
     <input type="file" name="image" accept="image/*">
+  </label>
+
+  <label>Vidéo (MP4 ou WebM, 80 Mo max.)
+    <% if (product && product.media) { %>
+      <span class="muted small">Vidéo actuelle : <a href="<%= product.media %>" target="_blank"><%= product.media %></a></span>
+      <span class="check-row small"><input type="checkbox" name="remove_media" value="1"> Retirer la vidéo</span>
+    <% } %>
+    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime">
   </label>
 
   <label><%= t('f_links') %>
