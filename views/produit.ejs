@@ -40,7 +40,13 @@
   </div>
 </article>
 
-<% if (product.media && !hostedVideo) { %>
+<% var isAudio = /\.(mp3|wav|m4a|ogg)$/i.test(product.media || ''); %>
+<% if (isAudio) { %>
+<section class="section detail-video reveal">
+  <h2 class="sec-title">🎧 Audio</h2>
+  <audio src="<%= product.media %>" controls preload="metadata" style="width:100%;max-width:640px"></audio>
+</section>
+<% } else if (product.media && !hostedVideo) { %>
 <section class="section detail-video reveal">
   <h2 class="sec-title">▶ <%= t('type_video') %></h2>
   <% var mediaPoster = /^\/videos\/.+\.mp4$/.test(product.media) ? product.media.replace(/\.mp4$/, '.jpg') : ''; %>

@@ -33,6 +33,21 @@
   </div>
 </footer>
 
+<% if (isAdmin) { %>
+<div class="admin-fab" id="admin-fab">
+  <button type="button" class="admin-fab-main" data-files-pick title="Ouvre l'explorateur Windows pour ajouter des fichiers">＋ Ajouter / − Enlever</button>
+  <a class="admin-fab-side" href="/admin/fichiers" title="Gérer : masquer ou enlever des publications">Gérer</a>
+</div>
+<input type="file" id="files-input" multiple hidden
+       accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg,.pdf,.epub,.docx,.doc,.xlsx,.pptx,.txt,.zip">
+<div class="upload-overlay" id="upload-overlay" hidden>
+  <div class="upload-box">
+    <strong id="upload-title">Envoi en cours…</strong>
+    <div class="upload-bar"><span id="upload-bar"></span></div>
+    <p class="muted small" id="upload-detail"></p>
+  </div>
+</div>
+<% } %>
 <script src="/js/main.js"></script>
 </body>
 </html>

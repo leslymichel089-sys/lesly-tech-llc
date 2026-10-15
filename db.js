@@ -410,6 +410,7 @@ if (getSetting('links_sync_v5') !== '1') {
 
 // --- Helpers ---
 function rowToProduct(r) {
+  if (!r) return null;
   let links = [];
   try { links = JSON.parse(r.links || '[]'); } catch (e) {}
   return { ...r, links, update_available: !!r.update_available, active: !!r.active };

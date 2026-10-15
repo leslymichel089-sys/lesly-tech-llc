@@ -106,11 +106,25 @@ app.use((req, res, next) => {
 // Les PDF/EPUB d'ebooks ne sont jamais acceptés : les ventes restent protégées.
 const IMAGE_MAX = 5 * 1024 * 1024, VIDEO_MAX = 80 * 1024 * 1024;
 const IMAGE_RE = /^image\/(png|jpe?g|webp|gif)$/i, VIDEO_RE = /^video\/(mp4|webm|quicktime)$/i;
+// Bouton « Ajouter / Enlever » : types de fichiers acceptés, classés par genre.
+// Exclus volontairement : .exe, .bat, .js, .html, .svg… (risque pour les visiteurs).
+const FILE_KINDS = {
+  image: ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif'],
+  video: ['.mp4', '.webm', '.mov'],
+  audio: ['.mp3', '.wav', '.m4a', '.ogg'],
+  doc: ['.pdf', '.epub', '.docx', '.doc', '.xlsx', '.pptx', '.txt', '.zip'],
+};
+function fileKind(name) {
+  const ext = path.extname(String(name || '')).toLowerCase();
+  return Object.keys(FILE_KINDS).find((k) => FILE_KINDS[k].includes(ext)) || null;
+}
 const storage = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 5);
-    const safe = file.fieldname === 'video'
+    const safe = file.fieldname === 'files'
+      ? (fileKind(file.originalname) ? ext : '.bin')
+      : file.fieldname === 'video'
       ? (/^\.(mp4|webm|mov)$/.test(ext) ? ext : '.mp4')
       : (/^\.(png|jpe?g|webp|gif)$/.test(ext) ? ext : '.png');
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1e6) + safe);
@@ -140,6 +154,12 @@ function upload(req, res, next) {
     next();
   });
 }
+const multerFiles = multer({
+  storage,
+  limits: { fileSize: VIDEO_MAX, files: 20 },
+  fileFilter: (req, file, cb) => cb(null, !!fileKind(file.originalname)),
+}).array('files', 20);
+
 // Supprime un fichier envoyé (image ou vidéo) s'il vient de /uploads/.
 function removeUpload(webPath) {
   if (webPath && String(webPath).startsWith('/uploads/')) { try { fs.unlinkSync(uploadFilePath(webPath)); } catch (e) {} }
@@ -153,7 +173,7 @@ function parseLinksTextarea(text) {
     const i = t.indexOf('|');
     if (i > 0) {
       const label = t.slice(0, i).trim(), url = t.slice(i + 1).trim();
-      if (label && /^https?:\/\//i.test(url)) links.push({ label, url });
+      if (label && (/^https?:\/\//i.test(url) || /^\/uploads\/[\w.-]+$/.test(url))) links.push({ label, url });
     }
   }
   return links;
@@ -210,17 +230,21 @@ app.get('/lang/:code', (req, res) => {
 });
 
 // ---------- Pages publiques ----------
+// Le public ne voit que les publications visibles ; l'admin connecté voit tout (masquées signalées).
+function listProducts(req, type) {
+  return dbm.qAll.all().map(dbm.rowToProduct)
+    .filter((p) => (!type || p.type === type) && (p.active || req.session.admin));
+}
+
 app.get('/', (req, res) => {
-  const products = dbm.qAll.all().map(dbm.rowToProduct);
+  const products = listProducts(req);
   res.render('index', { page: 'home', products });
 });
 
 app.get('/catalogue', (req, res) => {
   const filter = publish.TYPES.includes(req.query.type) ? req.query.type : '';
   const q = String(req.query.q || '').trim().toLowerCase();
-  let products = filter
-    ? dbm.qByType.all(filter).map(dbm.rowToProduct)
-    : dbm.qAll.all().map(dbm.rowToProduct);
+  let products = listProducts(req, filter);
   if (q) {
     products = products.filter((p) => [p.title, p.desc_fr, p.desc_en, p.desc_ht, p.desc_es]
       .some((v) => String(v || '').toLowerCase().includes(q)));
@@ -229,14 +253,14 @@ app.get('/catalogue', (req, res) => {
 });
 
 app.get('/ebooks', (req, res) => {
-  const ebooks = dbm.qByType.all('ebook').map(dbm.rowToProduct);
+  const ebooks = listProducts(req, 'ebook');
   res.render('ebooks', { page: 'ebooks', ebooks });
 });
 
 app.get('/produit/:id', (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
-  if (!p || !p.active) return res.status(404).render('404', { page: '' });
-  const related = dbm.qAll.all().map(dbm.rowToProduct).filter((x) => x.id !== p.id).slice(0, 3);
+  if (!p || (!p.active && !req.session.admin)) return res.status(404).render('404', { page: '' });
+  const related = dbm.qActive.all().map(dbm.rowToProduct).filter((x) => x.id !== p.id).slice(0, 3);
   const embed = !p.media && p.type === 'video' ? publish.firstVideoEmbed(p.links) : null;
   res.render('produit', { page: 'produit', product: p, related, embed });
 });
@@ -494,6 +518,78 @@ app.post('/admin/add', requireLogin, upload, csrfVerify, async (req, res, next) 
     watchdog.fire('product_added', 'Publication ajoutée', `« ${title} » (${type}) a été publiée.`).catch(() => {});
     res.redirect(`/admin/products/${info.lastInsertRowid}/edit?added=1${aiUsed ? '' : '&noai=1'}${noTitle ? '&notitle=1' : ''}`);
   } catch (e) { next(e); }
+});
+
+// ---------- Admin : bouton « Ajouter / Enlever » (explorateur Windows -> publication directe) ----------
+app.get('/admin/fichiers', requireLogin, (req, res) => {
+  const products = dbm.db.prepare('SELECT * FROM products ORDER BY id DESC').all().map(dbm.rowToProduct);
+  res.render('admin/fichiers', { page: 'admin', products });
+});
+
+app.post('/admin/fichiers/upload', requireLogin, (req, res, next) => {
+  multerFiles(req, res, (err) => {
+    if (err) {
+      const error = err.code === 'LIMIT_FILE_SIZE' ? 'Un fichier dépasse 80 Mo.'
+        : err.code === 'LIMIT_FILE_COUNT' ? '20 fichiers maximum par envoi.' : 'Envoi impossible.';
+      return res.status(413).json({ ok: false, error });
+    }
+    next();
+  });
+}, (req, res, next) => {
+  // Jeton CSRF envoyé dans le formulaire multipart.
+  if (!req.body || req.body._csrf !== req.session.csrf) {
+    for (const f of req.files || []) { try { fs.unlinkSync(f.path); } catch (e) {} }
+    return res.status(403).json({ ok: false, error: 'Session expirée : recharge la page.' });
+  }
+  next();
+}, (req, res) => {
+  const ins = dbm.db.prepare(`INSERT INTO products (title, type, desc_fr, image, media, links, version, active)
+    VALUES (@title, @type, @desc_fr, @image, @media, @links, '', 1)`);
+  const created = [];
+  for (const f of req.files || []) {
+    const kind = fileKind(f.originalname);
+    const web = '/uploads/' + f.filename;
+    const ext = path.extname(f.originalname).toLowerCase();
+    const title = publish.titleFromFilename(f.originalname) || 'Nouvelle publication';
+    const row = { title, type: 'autre', desc_fr: '', image: '', media: '', links: '[]' };
+    if (kind === 'image') { row.type = 'image'; row.image = web; }
+    else if (kind === 'video') { row.type = 'video'; row.media = web; }
+    else if (kind === 'audio') { row.media = web; }
+    else {
+      row.type = ['.pdf', '.epub'].includes(ext) ? 'ebook' : 'autre';
+      row.links = JSON.stringify([{ label: `Télécharger (${ext.slice(1).toUpperCase()})`, url: web }]);
+    }
+    const id = ins.run(row).lastInsertRowid;
+    created.push({ id, title, type: row.type });
+    // Description en 4 langues rédigée en arrière-plan (si l'IA est configurée).
+    publish.describeAllLangs({ title, type: row.type, notes: '' }).then(({ desc, aiUsed }) => {
+      if (!aiUsed) return;
+      dbm.db.prepare("UPDATE products SET desc_fr=@fr, desc_en=@en, desc_ht=@ht, desc_es=@es WHERE id=@id AND desc_fr=''")
+        .run({ id, fr: desc.fr || '', en: desc.en || '', ht: desc.ht || '', es: desc.es || '' });
+    }).catch(() => {});
+  }
+  if (created.length) {
+    watchdog.fire('product_added', 'Fichiers ajoutés', created.map((c) => `« ${c.title} »`).join(', ') + ' publié(s).').catch(() => {});
+  }
+  res.json({ ok: true, created });
+});
+
+app.post('/admin/fichiers/:id/visible', requireLogin, (req, res) => {
+  const p = dbm.qById.get(req.params.id);
+  if (!p) return res.status(404).json({ ok: false, error: 'Introuvable' });
+  dbm.db.prepare('UPDATE products SET active = 1 - active WHERE id = ?').run(p.id);
+  res.json({ ok: true, active: !p.active });
+});
+
+app.post('/admin/fichiers/:id/remove', requireLogin, (req, res) => {
+  const p = dbm.qById.get(req.params.id);
+  if (!p) return res.status(404).json({ ok: false, error: 'Introuvable' });
+  removeUpload(p.image);
+  removeUpload(p.media);
+  try { for (const l of JSON.parse(p.links || '[]')) removeUpload(l.url); } catch (e) {}
+  dbm.db.prepare('DELETE FROM products WHERE id = ?').run(p.id);
+  watchdog.fire('product_removed', 'Publication enlevée', `« ${p.title} » a été enlevée du site.`).catch(() => {});
+  res.json({ ok: true });
 });
 
 // ---------- Admin : CRUD produits ----------

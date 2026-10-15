@@ -4,7 +4,13 @@ var mediaClass = p.type === 'ebook' ? 'card-media-book' : (p.type === 'app' ? 'c
 var typeKey = 'type_' + (['app', 'ebook', 'video', 'image'].indexOf(p.type) >= 0 ? p.type : 'autre');
 var isVideo = p.type === 'video';
 %>
-<article class="card reveal">
+<article class="card reveal<%= p.active ? '' : ' card-hidden' %>">
+  <% if (isAdmin) { %>
+    <div class="card-admin">
+      <button type="button" class="card-admin-btn" data-toggle-visible="<%= p.id %>"><%= p.active ? '👁 Masquer' : '👁 Afficher' %></button>
+      <button type="button" class="card-admin-btn card-admin-del" data-remove="<%= p.id %>" data-title="<%= p.title %>">🗑 Enlever</button>
+    </div>
+  <% } %>
   <a class="card-media <%= mediaClass %>" href="/produit/<%= p.id %>" aria-label="<%= p.title %>">
     <% if (p.image) { %>
       <img class="card-bg" src="<%= p.image %>" alt="" aria-hidden="true" loading="lazy">

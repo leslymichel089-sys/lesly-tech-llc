@@ -69,6 +69,102 @@
         });
     });
   }
+  // --- Admin : bouton « Ajouter / Enlever » (explorateur Windows) + masquer / enlever ---
+  var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  if (csrfMeta) {
+    var csrf = csrfMeta.getAttribute('content');
+    var filesInput = document.getElementById('files-input');
+    var overlay = document.getElementById('upload-overlay');
+    var KINDS = /\.(png|jpe?g|webp|gif|avif|mp4|webm|mov|mp3|wav|m4a|ogg|pdf|epub|docx?|xlsx|pptx|txt|zip)$/i;
+    var FREE_DOWNLOAD = /\.(pdf|epub|docx?|xlsx|pptx|txt|zip)$/i;
+
+    function uploadFiles(fileList) {
+      var files = Array.prototype.slice.call(fileList || []);
+      if (!files.length) return;
+      var refused = files.filter(function (f) { return !KINDS.test(f.name); });
+      files = files.filter(function (f) { return KINDS.test(f.name); });
+      if (refused.length) alert('Fichiers ignorés (type non accepté) :\n' + refused.map(function (f) { return f.name; }).join('\n'));
+      var tooBig = files.filter(function (f) { return f.size > 80 * 1024 * 1024; });
+      if (tooBig.length) { alert('Trop lourd (80 Mo max) :\n' + tooBig.map(function (f) { return f.name; }).join('\n')); return; }
+      if (!files.length) return;
+      var docs = files.filter(function (f) { return FREE_DOWNLOAD.test(f.name); });
+      if (docs.length && !confirm('Attention : ces fichiers seront TÉLÉCHARGEABLES GRATUITEMENT par tous les visiteurs :\n\n' +
+          docs.map(function (f) { return '• ' + f.name; }).join('\n') +
+          '\n\nPour un ebook payant, préfère un lien de vente (Payhip, Gumroad…). Continuer ?')) return;
+
+      var fd = new FormData();
+      fd.append('_csrf', csrf);
+      files.forEach(function (f) { fd.append('files', f); });
+      var bar = document.getElementById('upload-bar');
+      var detail = document.getElementById('upload-detail');
+      document.getElementById('upload-title').textContent = 'Envoi de ' + files.length + ' fichier(s)…';
+      detail.textContent = files.map(function (f) { return f.name; }).join(', ');
+      bar.style.width = '0%';
+      overlay.hidden = false;
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/admin/fichiers/upload');
+      xhr.upload.onprogress = function (e) { if (e.lengthComputable) bar.style.width = Math.round(e.loaded / e.total * 100) + '%'; };
+      xhr.onload = function () {
+        var data = {};
+        try { data = JSON.parse(xhr.responseText); } catch (e) {}
+        if (data.ok) {
+          document.getElementById('upload-title').textContent = '✔ ' + data.created.length + ' publication(s) en ligne';
+          detail.textContent = data.created.map(function (c) { return c.title; }).join(', ') + ' — la description en 4 langues arrive dans quelques secondes.';
+          setTimeout(function () { location.reload(); }, 1600);
+        } else {
+          overlay.hidden = true;
+          alert('Échec : ' + (data.error || ('erreur ' + xhr.status)));
+        }
+      };
+      xhr.onerror = function () { overlay.hidden = true; alert('Échec de l\'envoi (connexion).'); };
+      xhr.send(fd);
+    }
+
+    // Tout bouton [data-files-pick] ouvre l'explorateur Windows.
+    document.querySelectorAll('[data-files-pick]').forEach(function (b) {
+      b.addEventListener('click', function () { filesInput.value = ''; filesInput.click(); });
+    });
+    if (filesInput) filesInput.addEventListener('change', function () { uploadFiles(filesInput.files); });
+
+    // Glisser-déposer des fichiers n'importe où sur la page.
+    document.addEventListener('dragover', function (e) {
+      if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') >= 0) {
+        e.preventDefault(); document.body.classList.add('drop-ready');
+      }
+    });
+    document.addEventListener('dragleave', function (e) { if (!e.relatedTarget) document.body.classList.remove('drop-ready'); });
+    document.addEventListener('drop', function (e) {
+      if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+      // Les zones de dépôt des formulaires gardent leur propre comportement.
+      if (e.target.closest && e.target.closest('.dropzone')) return;
+      e.preventDefault(); document.body.classList.remove('drop-ready');
+      uploadFiles(e.dataTransfer.files);
+    });
+
+    function postJson(url) {
+      return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _csrf: csrf }) })
+        .then(function (r) { return r.json(); });
+    }
+    document.querySelectorAll('[data-toggle-visible]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        postJson('/admin/fichiers/' + b.getAttribute('data-toggle-visible') + '/visible').then(function (d) {
+          if (d.ok) location.reload(); else alert('Échec : ' + (d.error || ''));
+        });
+      });
+    });
+    document.querySelectorAll('[data-remove]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('Enlever définitivement « ' + b.getAttribute('data-title') + ' » du site ?\n\n(Pour la cacher sans la perdre, utilise plutôt « Masquer ».)')) return;
+        postJson('/admin/fichiers/' + b.getAttribute('data-remove') + '/remove').then(function (d) {
+          if (d.ok) location.reload(); else alert('Échec : ' + (d.error || ''));
+        });
+      });
+    });
+  }
+
   // --- Apparition au scroll ---
   var revealEls = document.querySelectorAll('.reveal');
   if ('IntersectionObserver' in window && revealEls.length) {
