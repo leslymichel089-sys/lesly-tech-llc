@@ -57,6 +57,17 @@ try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentEle
       <a href="/contact" class="<%= page === 'contact' ? 'active' : '' %>"><%= t('nav_contact') %></a>
     </nav>
     <div class="header-tools">
+      <% if (googleClientId) { %>
+        <% if (visitor) { %>
+          <span class="visitor-chip">
+            <% if (visitor.picture) { %><img src="<%= visitor.picture %>" alt="" width="24" height="24" referrerpolicy="no-referrer"><% } %>
+            <span><%= t('auth_hello') %> <%= String(visitor.name || '').split(' ')[0] %></span>
+            <button type="button" class="visitor-logout" data-auth-logout data-csrf="<%= csrfToken %>"><%= t('auth_logout') %></button>
+          </span>
+        <% } else { %>
+          <button type="button" class="admin-link login-link" data-auth-open><%= t('auth_login') %></button>
+        <% } %>
+      <% } %>
       <a class="admin-link<%= isAdmin ? ' is-on' : '' %>" href="/admin" title="<%= isAdmin ? 'Tableau de bord admin' : 'Connexion admin' %>"><%= isAdmin ? '⚙ Admin' : '🔒 Admin' %></a>
       <span class="tool">
         <span class="tool-label"><%= t('lang_label') %></span>

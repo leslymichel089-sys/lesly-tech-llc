@@ -542,3 +542,50 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
 .conv-log { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 
 .dash-actions { flex-wrap: wrap; }
+
+/* Avertissement : ebooks non remboursables */
+.no-refund { margin: 10px 0 14px; padding: .7em 1em; border-radius: var(--radius-s); font-size: .9rem; line-height: 1.5;
+  background: color-mix(in srgb, #e8932f 12%, var(--surface)); border: 1px solid color-mix(in srgb, #e8932f 45%, var(--line)); color: var(--ink); }
+.no-refund a { font-weight: 700; }
+
+/* Chat : copie, flèche bas, trombone */
+.chat-body { position: relative; flex: 1; min-height: 0; display: flex; }
+.chat-body .chat-log { flex: 1; }
+.chat-msg { position: relative; user-select: text; }
+.chat-msg .chat-text { padding-right: 18px; }
+.chat-copy { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font-size: .75rem; line-height: 1; cursor: pointer; opacity: .55; transition: opacity var(--tr); }
+.chat-msg:hover .chat-copy, .chat-copy:focus { opacity: 1; }
+.chat-msg.user .chat-copy { background: rgba(255, 255, 255, .25); border-color: transparent; color: var(--on-brand); }
+.chat-msg.typing .chat-copy { display: none; }
+.chat-down { position: absolute; right: 14px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  font-size: 1.15rem; font-weight: 800; color: var(--on-brand); background: linear-gradient(135deg, var(--brand), var(--brand2));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .25); }
+.chat-down[hidden] { display: none; }
+.chat-head-btn { background: rgba(255, 255, 255, .2); border: 0; color: inherit; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; margin-left: auto; }
+.chat-head-btn + .chat-close { margin-left: 4px; }
+.chat-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+.chat-files[hidden] { display: none; }
+.chat-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 999px; padding: .25em .4em .25em .7em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-chip button { border: 0; background: transparent; cursor: pointer; color: var(--muted); }
+.chat-clip { border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; padding: 0 2px; }
+.chat-form { align-items: flex-end; }
+.chat-form textarea { flex: 1; font: inherit; padding: .6em .9em; border-radius: 18px; border: 1.5px solid var(--line); background: var(--surface);
+  color: var(--ink); resize: none; max-height: 120px; line-height: 1.4; }
+.chat-panel.drop { outline: 3px dashed var(--brand); outline-offset: -6px; }
+
+/* Connexion Google facultative */
+.login-link { cursor: pointer; font: inherit; font-size: .82rem; font-weight: 800; }
+.visitor-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.visitor-chip img { border-radius: 50%; }
+.visitor-logout { font: inherit; font-size: .75rem; border: 0; background: transparent; color: var(--muted); cursor: pointer; text-decoration: underline; }
+.auth-modal { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.auth-modal[hidden] { display: none; }
+.auth-box { position: relative; width: min(420px, 100%); background: var(--surface); border-radius: 22px; padding: 30px 26px 22px; text-align: center; box-shadow: 0 30px 70px rgba(0, 0, 0, .35); }
+.auth-logo { border-radius: 16px; margin: 0 auto 10px; }
+.auth-box h2 { margin: 0 0 8px; }
+.auth-x { position: absolute; top: 12px; right: 14px; border: 0; background: transparent; font-size: 1.1rem; cursor: pointer; color: var(--muted); }
+.auth-consent { text-align: left; font-size: .85rem; margin: 14px 0; align-items: flex-start; }
+.google-btn { display: flex; justify-content: center; min-height: 44px; margin: 6px 0 10px; }
+.auth-anon { width: 100%; margin-bottom: 8px; }

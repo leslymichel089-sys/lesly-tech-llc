@@ -1,0 +1,68 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Visiteurs connectés & relances</h1>
+  <p class="muted">Les visiteurs peuvent se connecter avec Google (facultatif — le site reste libre d'accès sans compte).
+    Leurs pages vues, clics et questions à l'assistant sont rattachés à leur compte. Les relances par e-mail ne partent
+    <strong>qu'aux visiteurs qui l'ont accepté</strong>, avec un lien de désinscription.</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <form method="post" action="/admin/visiteurs/run" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-small" type="submit">Lancer les relances maintenant (<%= pendingCount %> en attente)</button>
+    </form>
+  </div>
+</section>
+
+<% if (saved) { %><p class="alert alert-ok">Réglages enregistrés.</p><% } %>
+<% if (msg) { %><p class="alert alert-ok"><%= msg %></p><% } %>
+
+<section class="dash-panel">
+  <h2>Réglages</h2>
+  <form method="post" action="/admin/visiteurs/settings" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Client ID Google (OAuth « Application Web »)
+      <input type="text" name="google_client_id" value="<%= settings.clientId %>" placeholder="1234567890-abc.apps.googleusercontent.com"></label>
+    <p class="muted small">Google Cloud Console → API et services → Identifiants → Créer → ID client OAuth → Application Web.
+      Origine JavaScript autorisée : <code>https://lesly-tech-llc.onrender.com</code>. Sans Client ID, le bouton Google n'apparaît pas (accès libre uniquement).</p>
+    <div class="form-row">
+      <label class="check-row"><input type="checkbox" name="relance_enabled" <%= settings.relanceEnabled ? 'checked' : '' %>> Relances automatiques activées</label>
+      <label>Relancer après (jours d'inactivité)
+        <input type="number" name="relance_after_days" min="1" max="30" value="<%= settings.relanceAfterDays %>"></label>
+      <label>Pas plus d'une relance tous les (jours)
+        <input type="number" name="relance_every_days" min="3" max="90" value="<%= settings.relanceEveryDays %>"></label>
+    </div>
+    <p class="muted small">
+      E-mail d'envoi : <strong><%= settings.emailReady ? '✔ Resend configuré' : '✖ configure Resend dans Notifications (domaine vérifié requis pour écrire aux visiteurs)' %></strong>.
+      Maximum 3 relances par visiteur, jamais à ceux qui ont déjà acheté (e-mail retrouvé dans les ventes).
+      <% if (lastRun) { %>Dernier passage : <%= lastRun %>.<% } %>
+    </p>
+    <div><button class="btn" type="submit">Enregistrer</button></div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2><%= visitors.length %> visiteur(s) connecté(s)</h2>
+  <% if (!visitors.length) { %><p class="muted">Aucun visiteur connecté pour l'instant.</p><% } else { %>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Visiteur</th><th>Dernière visite (UTC)</th><th>Pages</th><th>Clics</th><th>Questions</th><th>E-mails</th><th>Relances</th><th></th></tr></thead>
+        <tbody>
+          <% visitors.forEach(function (v) { %>
+            <tr>
+              <td><strong><%= v.name %></strong><br><span class="muted small"><%= v.email %></span><% if (v.purchased) { %> <span class="tag tag-update">client</span><% } %></td>
+              <td class="small nowrap"><%= v.last_seen %></td>
+              <td><%= v.views %></td><td><%= v.clicks %></td><td><%= v.questions %></td>
+              <td><span class="tag <%= v.consent ? 'tag-update' : 'tag-off' %>"><%= v.consent ? 'accepte' : 'refuse' %></span></td>
+              <td><%= v.relances %></td>
+              <td><a class="btn btn-small btn-ghost" href="/admin/visiteurs/<%= v.id %>">Voir</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

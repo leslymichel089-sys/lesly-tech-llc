@@ -165,6 +165,10 @@
     {
       "h": "6. Contact",
       "p": "Pour toute question sur cette politique, contactez Lesly Tech LLC via les canaux indiqués sur ce site."
+    },
+    {
+      "h": "Connexion Google et e-mails",
+      "p": "La connexion avec Google est facultative : le site reste entièrement accessible sans compte. Si tu te connectes, nous recevons uniquement ton nom, ton adresse e-mail et ta photo de profil Google. Nous associons alors à ton compte les pages consultées, les clics vers les boutiques et tes questions à l'assistant, afin de te proposer des recommandations adaptées. Nous ne t'envoyons d'e-mails (nouveautés, conseils, rappels) que si tu as coché la case d'accord ; chaque e-mail contient un lien pour te désinscrire en un clic. Tu peux demander la suppression de tes données à tout moment via la page Contact."
     }
   ],
   "privacy_title": "Politique de confidentialité",
@@ -200,12 +204,34 @@
   "terms_title": "Conditions d'utilisation",
   "terms_intro": "En accédant à ce site, vous acceptez les conditions suivantes.",
   "terms_sections": [
-    { "h": "1. Objet", "p": "Ce site présente les applications, ebooks et services de Lesly Tech LLC. Il ne vend pas directement de produits et ne collecte pas de paiement en ligne." },
-    { "h": "2. Propriété intellectuelle", "p": "Tous les contenus du site et les œuvres présentées restent la propriété de Lesly Tech LLC, sauf mention contraire." },
-    { "h": "3. Liens externes", "p": "Les boutons vers Google Play, Payhip, Gumroad ou Shopify redirigent vers des plateformes tierces soumises à leurs propres conditions." },
-    { "h": "4. Disponibilité", "p": "Lesly Tech LLC s'efforce de maintenir le site accessible, mais ne garantit pas une disponibilité continue en cas de maintenance ou de panne externe." },
-    { "h": "5. Responsabilité", "p": "Les informations fournies le sont à titre indicatif. Lesly Tech LLC ne peut être tenue responsable d'un usage inapproprié des contenus." },
-    { "h": "6. Contact", "p": "Pour toute question relative à ces conditions, utilisez la page Contact." }
+    {
+      "h": "1. Objet",
+      "p": "Ce site présente les applications, ebooks et services de Lesly Tech LLC. Il ne vend pas directement de produits et ne collecte pas de paiement en ligne."
+    },
+    {
+      "h": "2. Propriété intellectuelle",
+      "p": "Tous les contenus du site et les œuvres présentées restent la propriété de Lesly Tech LLC, sauf mention contraire."
+    },
+    {
+      "h": "3. Liens externes",
+      "p": "Les boutons vers Google Play, Payhip, Gumroad ou Shopify redirigent vers des plateformes tierces soumises à leurs propres conditions."
+    },
+    {
+      "h": "4. Disponibilité",
+      "p": "Lesly Tech LLC s'efforce de maintenir le site accessible, mais ne garantit pas une disponibilité continue en cas de maintenance ou de panne externe."
+    },
+    {
+      "h": "5. Responsabilité",
+      "p": "Les informations fournies le sont à titre indicatif. Lesly Tech LLC ne peut être tenue responsable d'un usage inapproprié des contenus."
+    },
+    {
+      "h": "6. Ebooks : aucun remboursement",
+      "p": "Les ebooks et autres produits numériques sont livrés immédiatement après l'achat (téléchargement). Ce ne sont pas des produits physiques : une fois l'achat effectué, ils ne peuvent être ni retournés, ni échangés, ni remboursés, quel que soit le motif. En achetant, tu reconnais avoir pris connaissance de cette condition. Les achats sont réalisés sur des plateformes tierces (Amazon Kindle, Payhip, Gumroad, Shopify) qui appliquent également leurs propres conditions."
+    },
+    {
+      "h": "7. Contact",
+      "p": "Pour toute question relative à ces conditions, utilisez la page Contact."
+    }
   ],
   "notif_nav": "Notifications",
   "notif_title": "Notifications & watchdog",
@@ -286,5 +312,21 @@
   "stat_themes": "Thèmes",
   "footer_tagline": "Des créations pensées pour être simples, utiles et accessibles — du compagnon IA aux guides des Éditions LeVent.",
   "footer_explore": "Explorer",
-  "footer_legal": "Légal"
+  "footer_legal": "Légal",
+  "no_refund_note": "⚠️ Ebook = produit numérique livré immédiatement après l'achat : il ne peut en aucun cas être retourné ni remboursé.",
+  "chat_copy": "Copier",
+  "chat_copied": "Copié ✔",
+  "chat_copy_all": "Tout copier",
+  "chat_attach": "Joindre un fichier",
+  "chat_down": "Aller en bas",
+  "chat_files_hint": "Images, PDF, Word, texte — 3 fichiers, 5 Mo max.",
+  "auth_login": "Se connecter",
+  "auth_logout": "Déconnexion",
+  "auth_title": "Bienvenue ! 👋",
+  "auth_text": "Connecte-toi avec Google pour des recommandations personnalisées, ou continue librement sans compte : tout le site reste accessible.",
+  "auth_consent": "J'accepte de recevoir par e-mail des nouveautés et conseils de lecture (désinscription en un clic).",
+  "auth_anonymous": "Continuer sans compte",
+  "auth_hello": "Bonjour",
+  "auth_error": "Connexion impossible. Réessaie ou continue sans compte.",
+  "auth_privacy": "Nous ne recevons que ton nom, ton e-mail et ta photo Google. Voir la politique de confidentialité."
 }

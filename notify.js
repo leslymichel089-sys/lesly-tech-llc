@@ -351,4 +351,13 @@ function sourceOf(envName, dbKey) {
   return s !== null && s !== undefined && String(s) !== '' ? 'admin' : null;
 }
 
-module.exports = { CHANNELS, sendAll, channelStatus, val, sourceOf };
+// E-mail vers un destinataire précis (relances visiteurs). Nécessite Resend.
+async function sendEmailTo(to, subject, text, html) {
+  const cfg = resendConfig() || (val('RESEND_API_KEY', 'notif_resend_key')
+    ? { key: val('RESEND_API_KEY', 'notif_resend_key'), from: val('RESEND_FROM', 'notif_resend_from') || 'Lesly Tech LLC <onboarding@resend.dev>' } : null);
+  if (!cfg) throw new Error('Resend non configuré');
+  return resendSend({ ...cfg, to }, subject, text, html);
+}
+function emailReady() { return !!val('RESEND_API_KEY', 'notif_resend_key'); }
+
+module.exports = { CHANNELS, sendAll, sendEmailTo, emailReady, channelStatus, val, sourceOf };

@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+
+<section class="notfound">
+  <% if (done) { %>
+    <h1>✔ <%= lang === 'en' ? 'You are unsubscribed' : lang === 'ht' ? 'Ou dezabòne' : lang === 'es' ? 'Te has dado de baja' : 'Tu es désinscrit' %></h1>
+    <p class="muted"><%= lang === 'en' ? 'You will no longer receive e-mails from us.' : lang === 'ht' ? 'Ou p ap resevwa imèl nou ankò.' : lang === 'es' ? 'Ya no recibirás nuestros correos.' : 'Tu ne recevras plus nos e-mails.' %></p>
+  <% } else { %>
+    <h1><%= lang === 'en' ? 'Invalid link' : lang === 'ht' ? 'Lyen an pa bon' : lang === 'es' ? 'Enlace no válido' : 'Lien invalide' %></h1>
+  <% } %>
+  <p><a class="btn" href="/"><%= t('nav_home') %></a></p>
+</section>
+
+<%- include('partials/footer') %>

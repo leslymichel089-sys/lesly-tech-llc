@@ -19,6 +19,7 @@ const webhooks = require('./webhooks');
 const monitor = require('./monitor');
 const report = require('./report');
 const assistant = require('./assistant');
+const accounts = require('./accounts');
 
 // Les couvertures sont versionnées en base64 (*.jpg.b64) car certains modes de
 // déploiement ne transportent pas le binaire. On les restaure en .jpg au démarrage.
@@ -199,9 +200,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// ---------- Comptes visiteurs (Google facultatif) + relances avec consentement ----------
+accounts.register(app, { requireLogin, siteUrl: SITE_URL });
+
 // ---------- Page de maintenance (site désactivé ; l'admin reste accessible) ----------
 app.use((req, res, next) => {
-  if (req.path.startsWith('/admin') || req.path.startsWith('/lang') || req.path.startsWith('/webhooks/')) return next();
+  if (req.path.startsWith('/admin') || req.path.startsWith('/lang') || req.path.startsWith('/webhooks/') || req.path.startsWith('/desabonnement/')) return next();
   if (dbm.getSetting('site_enabled') === '0') {
     return res.status(503).render('maintenance', { page: 'maintenance' });
   }
@@ -222,7 +226,7 @@ ai.onEvent((ev) => {
 // ---------- Compteur de visites + pic de visites (watchdog) ----------
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/admin') && !req.path.startsWith('/go')) {
-    dbm.logVisit(req.path);
+    dbm.logVisit(req.path, req.session.visitorId || null);
     watchdog.checkVisitsSpike().catch(() => {});
   }
   next();
@@ -276,7 +280,7 @@ app.get('/go/:id/:index', (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
   const link = p && p.links[parseInt(req.params.index, 10)];
   if (!p || !p.active || !link) return res.status(404).render('404', { page: '' });
-  dbm.logClick(p.id, link.label, link.url);
+  dbm.logClick(p.id, link.label, link.url, req.session.visitorId || null);
   res.redirect(302, link.url);
 });
 
@@ -805,6 +809,7 @@ app.post('/admin/ventes/test', requireLogin, async (req, res) => {
 
 // ---------- Assistant IA des visiteurs ----------
 assistant.register(app, {
+  requireLogin,
   contactEmail: process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com',
   publisherEmail: process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com',
 });

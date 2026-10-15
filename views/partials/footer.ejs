@@ -50,24 +50,46 @@
 </div>
 <% } %>
 <% if (chatEnabled && !String(currentPath).startsWith('/admin')) { %>
-<div class="chat-widget" id="chat-widget" data-csrf="<%= csrfToken %>" data-lang="<%= lang %>">
+<div class="chat-widget" id="chat-widget" data-csrf="<%= csrfToken %>" data-lang="<%= lang %>" data-copy="<%= t('chat_copy') %>" data-copied="<%= t('chat_copied') %>">
   <button type="button" class="chat-toggle" id="chat-toggle" aria-expanded="false" aria-controls="chat-panel">💬 <span><%= t('chat_open') %></span></button>
   <div class="chat-panel" id="chat-panel" role="dialog" aria-label="<%= t('chat_title') %>" hidden>
     <div class="chat-head">
       <img src="/img/levent-logo.jpg" alt="" width="36" height="36">
       <div><strong><%= t('chat_title') %></strong><br><span><%= t('chat_sub') %></span></div>
+      <button type="button" class="chat-head-btn" id="chat-copy-all" title="<%= t('chat_copy_all') %>" aria-label="<%= t('chat_copy_all') %>">⧉</button>
       <button type="button" class="chat-close" id="chat-close" aria-label="Fermer">✕</button>
     </div>
-    <div class="chat-log" id="chat-log" aria-live="polite">
-      <div class="chat-msg bot"><%= t('chat_hello') %></div>
+    <div class="chat-body">
+      <div class="chat-log" id="chat-log" aria-live="polite">
+        <div class="chat-msg bot"><%= t('chat_hello') %></div>
+      </div>
+      <button type="button" class="chat-down" id="chat-down" title="<%= t('chat_down') %>" aria-label="<%= t('chat_down') %>" hidden>↓</button>
     </div>
+    <div class="chat-files" id="chat-files" hidden></div>
     <form class="chat-form" id="chat-form">
-      <input type="text" id="chat-input" maxlength="800" autocomplete="off" placeholder="<%= t('chat_placeholder') %>" aria-label="<%= t('chat_placeholder') %>">
+      <button type="button" class="chat-clip" id="chat-clip" title="<%= t('chat_attach') %> — <%= t('chat_files_hint') %>" aria-label="<%= t('chat_attach') %>">📎</button>
+      <input type="file" id="chat-file" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.doc,.docx,.txt,.md,.csv,.json">
+      <textarea id="chat-input" rows="1" maxlength="800" placeholder="<%= t('chat_placeholder') %>" aria-label="<%= t('chat_placeholder') %>"></textarea>
       <button type="submit" class="btn btn-small"><%= t('chat_send') %></button>
     </form>
     <p class="chat-note" data-typing="<%= t('chat_typing') %>"><%= t('chat_note') %></p>
   </div>
 </div>
+<% } %>
+<% if (googleClientId && !visitor && !String(currentPath).startsWith('/admin')) { %>
+<div class="auth-modal" id="auth-modal" hidden data-client-id="<%= googleClientId %>" data-csrf="<%= csrfToken %>" data-error="<%= t('auth_error') %>">
+  <div class="auth-box" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <button type="button" class="auth-x" data-auth-anon aria-label="Fermer">✕</button>
+    <img src="/img/levent-logo.jpg" alt="" width="64" height="64" class="auth-logo">
+    <h2 id="auth-title"><%= t('auth_title') %></h2>
+    <p class="muted"><%= t('auth_text') %></p>
+    <label class="check-row auth-consent"><input type="checkbox" id="auth-consent"> <span><%= t('auth_consent') %></span></label>
+    <div id="google-btn" class="google-btn"></div>
+    <button type="button" class="btn btn-ghost auth-anon" data-auth-anon><%= t('auth_anonymous') %></button>
+    <p class="muted small"><a href="/confidentialite"><%= t('auth_privacy') %></a></p>
+  </div>
+</div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <% } %>
 <script src="/js/main.js"></script>
 </body>

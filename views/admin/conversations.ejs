@@ -35,7 +35,10 @@
         <span class="muted small"> — <%= c.started %> UTC · <%= c.n %> message(s) · <%= c.lang %></span></summary>
       <div class="conv-log">
         <% c.messages.forEach(function (m) { %>
-          <div class="chat-msg <%= m.role === 'user' ? 'user' : 'bot' %>"><%= m.content %><% if (m.provider) { %><br><span class="small" style="opacity:.6">via <%= m.provider %></span><% } %></div>
+          <% var safe = String(m.content).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+               .replace(/📎 \[([^\]]+)\]\((\/admin\/chat-files\/[\w.]+)\)/g, '📎 <a href="$2" style="color:inherit;text-decoration:underline">$1</a>')
+               .replace(/\n/g, '<br>'); %>
+          <div class="chat-msg <%= m.role === 'user' ? 'user' : 'bot' %>"><%- safe %><% if (m.provider) { %><br><span class="small" style="opacity:.6">via <%= m.provider %></span><% } %></div>
         <% }) %>
       </div>
     </details>

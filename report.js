@@ -53,6 +53,7 @@ function collect() {
     ai: ai.status().filter((s) => s.configured),
     system: monitor.snapshot(),
     siteEnabled: dbm.getSetting('site_enabled') !== '0',
+    accounts: require('./accounts').dailyStats(),
   };
 }
 
@@ -106,6 +107,7 @@ async function build() {
     `Ventes : ${d.salesCount} — ${d.salesTotal.toFixed(2)} $${d.refunds ? ` (${d.refunds} remboursement(s))` : ''}`,
     `Messages de contact : ${d.contacts.length} · Nouveaux abonnés : ${d.subscribers}`,
     `Conversations avec l'assistant IA : ${d.chats}`,
+    `Comptes Google : +${d.accounts.newAccounts} (total ${d.accounts.accounts}, ${d.accounts.consenting} acceptent les e-mails) · Relances envoyées : ${d.accounts.relances}`,
     `Erreurs serveur : ${d.errors}`,
     problems.length ? '\nÀ surveiller :\n' + problems.map((p) => '• ' + p).join('\n') : '',
     `\nCatalogue : ${d.products} publication(s) visibles${d.hiddenProducts ? `, ${d.hiddenProducts} masquée(s)` : ''}.`,
@@ -131,6 +133,8 @@ async function build() {
       ${row('Messages de contact', d.contacts.length)}
       ${row('Nouveaux abonnés newsletter', d.subscribers)}
       ${row('Conversations assistant IA', d.chats)}
+      ${row('Nouveaux comptes Google', `${d.accounts.newAccounts} (total ${d.accounts.accounts}, ${d.accounts.consenting} acceptent les e-mails)`)}
+      ${row('Relances e-mail envoyées', d.accounts.relances)}
       ${row('Erreurs serveur', d.errors)}
       ${row('Publications visibles', `${d.products}${d.hiddenProducts ? ` (+${d.hiddenProducts} masquées)` : ''}`)}
     </table>

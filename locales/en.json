@@ -165,6 +165,10 @@
     {
       "h": "6. Contact",
       "p": "For any question about this policy, contact Lesly Tech LLC through the channels listed on this site."
+    },
+    {
+      "h": "Google sign-in and e-mails",
+      "p": "Signing in with Google is optional: the whole site stays accessible without an account. If you sign in, we only receive your Google name, e-mail address and profile photo. We then link the pages you view, your clicks to the stores and your questions to the assistant to your account, in order to offer relevant recommendations. We only send you e-mails (news, tips, reminders) if you ticked the consent box; every e-mail includes a one-click unsubscribe link. You can ask us to delete your data at any time via the Contact page."
     }
   ],
   "privacy_title": "Privacy policy",
@@ -200,12 +204,34 @@
   "terms_title": "Terms of use",
   "terms_intro": "By accessing this site, you agree to the following terms.",
   "terms_sections": [
-    { "h": "1. Purpose", "p": "This site presents Lesly Tech LLC apps, ebooks and services. It does not sell products directly and does not collect online payments." },
-    { "h": "2. Intellectual property", "p": "All site content and presented works remain the property of Lesly Tech LLC, unless otherwise stated." },
-    { "h": "3. External links", "p": "Buttons to Google Play, Payhip, Gumroad or Shopify redirect to third-party platforms subject to their own terms." },
-    { "h": "4. Availability", "p": "Lesly Tech LLC works to keep the site accessible but does not guarantee continuous availability during maintenance or external outages." },
-    { "h": "5. Liability", "p": "Information is provided for guidance only. Lesly Tech LLC cannot be held liable for inappropriate use of the content." },
-    { "h": "6. Contact", "p": "For any question about these terms, use the Contact page." }
+    {
+      "h": "1. Purpose",
+      "p": "This site presents Lesly Tech LLC apps, ebooks and services. It does not sell products directly and does not collect online payments."
+    },
+    {
+      "h": "2. Intellectual property",
+      "p": "All site content and presented works remain the property of Lesly Tech LLC, unless otherwise stated."
+    },
+    {
+      "h": "3. External links",
+      "p": "Buttons to Google Play, Payhip, Gumroad or Shopify redirect to third-party platforms subject to their own terms."
+    },
+    {
+      "h": "4. Availability",
+      "p": "Lesly Tech LLC works to keep the site accessible but does not guarantee continuous availability during maintenance or external outages."
+    },
+    {
+      "h": "5. Liability",
+      "p": "Information is provided for guidance only. Lesly Tech LLC cannot be held liable for inappropriate use of the content."
+    },
+    {
+      "h": "6. Ebooks: no refunds",
+      "p": "Ebooks and other digital products are delivered instantly after purchase (download). They are not physical goods: once purchased, they cannot be returned, exchanged or refunded for any reason. By purchasing, you acknowledge this condition. Purchases are made on third-party platforms (Amazon Kindle, Payhip, Gumroad, Shopify), which also apply their own terms."
+    },
+    {
+      "h": "7. Contact",
+      "p": "For any question about these terms, use the Contact page."
+    }
   ],
   "notif_nav": "Notifications",
   "notif_title": "Notifications & watchdog",
@@ -279,5 +305,21 @@
   "stat_themes": "Themes",
   "footer_tagline": "Creations designed to be simple, useful and accessible — from the AI companion to the LeVent Éditions guides.",
   "footer_explore": "Explore",
-  "footer_legal": "Legal"
+  "footer_legal": "Legal",
+  "no_refund_note": "⚠️ Ebooks are digital products delivered instantly after purchase: they cannot be returned or refunded under any circumstances.",
+  "chat_copy": "Copy",
+  "chat_copied": "Copied ✔",
+  "chat_copy_all": "Copy all",
+  "chat_attach": "Attach a file",
+  "chat_down": "Scroll to bottom",
+  "chat_files_hint": "Images, PDF, Word, text — 3 files, 5 MB max.",
+  "auth_login": "Sign in",
+  "auth_logout": "Sign out",
+  "auth_title": "Welcome! 👋",
+  "auth_text": "Sign in with Google for personalized recommendations, or keep browsing freely without an account: the whole site stays open.",
+  "auth_consent": "I agree to receive news and reading tips by e-mail (one-click unsubscribe).",
+  "auth_anonymous": "Continue without an account",
+  "auth_hello": "Hi",
+  "auth_error": "Sign-in failed. Try again or continue without an account.",
+  "auth_privacy": "We only receive your Google name, e-mail and photo. See our privacy policy."
 }

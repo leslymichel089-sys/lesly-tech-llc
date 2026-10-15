@@ -26,6 +26,7 @@
     <p class="detail-desc"><%= descFor(product, lang) %></p>
     <% if (product.links && product.links.length) { %>
       <h2 class="links-title"><%= t('product_links_title') %></h2>
+      <% if (product.type === 'ebook') { %><p class="no-refund" role="note"><%= t('no_refund_note') %> <a href="/conditions"><%= t('nav_terms') %></a></p><% } %>
       <div class="links-list">
         <% product.links.forEach(function(l, i){ %>
           <a class="btn" href="/go/<%= product.id %>/<%= i %>" target="_blank" rel="noopener"><%= l.label %> ↗</a>

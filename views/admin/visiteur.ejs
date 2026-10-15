@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Visiteur</span>
+  <h1><%= v.name || v.email %></h1>
+  <p class="muted"><%= v.email %> · inscrit le <%= v.created_at %> UTC · dernière visite <%= v.last_seen %> UTC
+    · e-mails : <strong><%= v.consent ? 'accepte' : 'refuse' %></strong><%= purchased ? ' · a déjà acheté' : '' %></p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin/visiteurs">← Visiteurs</a>
+    <a class="btn btn-small btn-ghost" href="/admin/visiteurs/<%= v.id %>?preview=1">Prévisualiser une relance (IA)</a>
+    <% if (v.consent) { %>
+      <form method="post" action="/admin/visiteurs/<%= v.id %>/relance" class="inline-form" onsubmit="return confirm('Envoyer une relance personnalisée à <%= v.email %> ?')">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-small" type="submit">Envoyer une relance maintenant</button>
+      </form>
+    <% } %>
+  </div>
+</section>
+
+<% if (msg) { %><p class="alert alert-ok"><%= msg %></p><% } %>
+<% if (previewError) { %><p class="alert alert-error">Aperçu impossible : <%= previewError %></p><% } %>
+<% if (preview) { %>
+  <section class="dash-panel">
+    <h2>Aperçu de la relance — « <%= preview.subject %> »</h2>
+    <div class="report-preview"><%- preview.html %></div>
+    <p class="muted small">Rédigée par <%= preview.provider %>. Chaque aperçu est rédigé à nouveau.</p>
+  </section>
+<% } %>
+
+<section class="dash-panel">
+  <h2>Livres et créations consultés</h2>
+  <ul class="mini-list">
+    <% act.products.forEach(function (p) { %><li><a href="/produit/<%= p.id %>" target="_blank"><%= p.title %></a></li><% }) %>
+    <% if (!act.products.length) { %><li class="muted">—</li><% } %>
+  </ul>
+  <h3 style="margin-top:16px">Pages vues</h3>
+  <ul class="mini-list">
+    <% act.views.forEach(function (x) { %><li><%= x.path %> — <%= x.n %> fois (dernière : <%= x.last %>)</li><% }) %>
+    <% if (!act.views.length) { %><li class="muted">—</li><% } %>
+  </ul>
+  <h3 style="margin-top:16px">Clics vers les boutiques</h3>
+  <ul class="mini-list">
+    <% act.clicks.forEach(function (c) { %><li><%= c.title %> → <%= c.label %> (<%= c.at %>)</li><% }) %>
+    <% if (!act.clicks.length) { %><li class="muted">—</li><% } %>
+  </ul>
+  <h3 style="margin-top:16px">Questions posées à l'assistant</h3>
+  <ul class="mini-list">
+    <% act.questions.forEach(function (q) { %><li><%= q.content %> <span class="muted small">(<%= q.at %>)</span></li><% }) %>
+    <% if (!act.questions.length) { %><li class="muted">—</li><% } %>
+  </ul>
+</section>
+
+<%- include('../partials/footer') %>

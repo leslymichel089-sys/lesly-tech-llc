@@ -109,6 +109,28 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 );
 `);
 
+// Comptes visiteurs (connexion Google facultative) et relances e-mail avec consentement.
+db.exec(`
+CREATE TABLE IF NOT EXISTS visitors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  google_sub TEXT UNIQUE,
+  email TEXT DEFAULT '', name TEXT DEFAULT '', picture TEXT DEFAULT '',
+  lang TEXT DEFAULT 'fr',
+  consent INTEGER DEFAULT 0,             -- 1 = accepte les e-mails (relances, nouveautés)
+  unsub_token TEXT DEFAULT '',
+  relances INTEGER DEFAULT 0,
+  last_relance TEXT DEFAULT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  last_seen TEXT DEFAULT (datetime('now'))
+);
+`);
+// Rattache visites, clics et conversations au visiteur connecté (NULL = anonyme).
+for (const t of ['visits', 'clicks', 'chat_messages']) {
+  if (!db.prepare(`PRAGMA table_info(${t})`).all().some((c) => c.name === 'visitor_id')) {
+    db.exec(`ALTER TABLE ${t} ADD COLUMN visitor_id INTEGER DEFAULT NULL`);
+  }
+}
+
 // Migration : colonne « media » (vidéo hébergée sur le site, ex. /videos/x.mp4 ou /uploads/x.mp4).
 if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'media')) {
   db.exec("ALTER TABLE products ADD COLUMN media TEXT DEFAULT ''");
@@ -448,14 +470,14 @@ const qActive = db.prepare("SELECT * FROM products WHERE active = 1 ORDER BY id"
 const qById = db.prepare('SELECT * FROM products WHERE id = ?');
 const qByType = db.prepare('SELECT * FROM products WHERE type = ? AND active = 1 ORDER BY id');
 
-function logVisit(path) {
+function logVisit(path, visitorId = null) {
   const day = new Date().toISOString().slice(0, 10);
-  db.prepare('INSERT INTO visits (day, path) VALUES (?, ?)').run(day, path);
+  db.prepare('INSERT INTO visits (day, path, visitor_id) VALUES (?, ?, ?)').run(day, path, visitorId);
   db.prepare("INSERT INTO events (kind, label) VALUES ('visit', ?)").run(path);
   db.prepare('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT 500)').run();
 }
-function logClick(productId, label, url) {
-  db.prepare('INSERT INTO clicks (product_id, label, url) VALUES (?, ?, ?)').run(productId, label, url);
+function logClick(productId, label, url, visitorId = null) {
+  db.prepare('INSERT INTO clicks (product_id, label, url, visitor_id) VALUES (?, ?, ?, ?)').run(productId, label, url, visitorId);
   const p = qById.get(productId);
   db.prepare("INSERT INTO events (kind, label) VALUES ('click', ?)").run(`${p ? p.title : '#' + productId} → ${label}`);
   db.prepare('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT 500)').run();

@@ -165,6 +165,10 @@
     {
       "h": "6. Contacto",
       "p": "Para cualquier pregunta sobre esta política, contacte con Lesly Tech LLC a través de los canales indicados en este sitio."
+    },
+    {
+      "h": "Inicio de sesión con Google y correos",
+      "p": "Iniciar sesión con Google es opcional: todo el sitio sigue accesible sin cuenta. Si inicias sesión, solo recibimos tu nombre, tu correo y tu foto de perfil de Google. Asociamos a tu cuenta las páginas que visitas, tus clics hacia las tiendas y tus preguntas al asistente para ofrecerte recomendaciones adecuadas. Solo te enviamos correos (novedades, consejos, recordatorios) si marcaste la casilla de consentimiento; cada correo incluye un enlace para darte de baja con un clic. Puedes pedir la eliminación de tus datos en cualquier momento desde la página de Contacto."
     }
   ],
   "privacy_title": "Política de privacidad",
@@ -200,12 +204,34 @@
   "terms_title": "Términos de uso",
   "terms_intro": "Al acceder a este sitio, acepta las condiciones siguientes.",
   "terms_sections": [
-    { "h": "1. Objeto", "p": "Este sitio presenta las aplicaciones, ebooks y servicios de Lesly Tech LLC. No vende productos directamente ni recoge pagos en línea." },
-    { "h": "2. Propiedad intelectual", "p": "Todo el contenido del sitio y las obras presentadas siguen siendo propiedad de Lesly Tech LLC, salvo indicación contraria." },
-    { "h": "3. Enlaces externos", "p": "Los botones a Google Play, Payhip, Gumroad o Shopify redirigen a plataformas de terceros sujetas a sus propias condiciones." },
-    { "h": "4. Disponibilidad", "p": "Lesly Tech LLC trabaja para mantener el sitio accesible, pero no garantiza disponibilidad continua durante mantenimiento o fallos externos." },
-    { "h": "5. Responsabilidad", "p": "La información se ofrece solo como orientación. Lesly Tech LLC no se hace responsable de un uso inadecuado de los contenidos." },
-    { "h": "6. Contacto", "p": "Para cualquier pregunta sobre estos términos, utilice la página de Contacto." }
+    {
+      "h": "1. Objeto",
+      "p": "Este sitio presenta las aplicaciones, ebooks y servicios de Lesly Tech LLC. No vende productos directamente ni recoge pagos en línea."
+    },
+    {
+      "h": "2. Propiedad intelectual",
+      "p": "Todo el contenido del sitio y las obras presentadas siguen siendo propiedad de Lesly Tech LLC, salvo indicación contraria."
+    },
+    {
+      "h": "3. Enlaces externos",
+      "p": "Los botones a Google Play, Payhip, Gumroad o Shopify redirigen a plataformas de terceros sujetas a sus propias condiciones."
+    },
+    {
+      "h": "4. Disponibilidad",
+      "p": "Lesly Tech LLC trabaja para mantener el sitio accesible, pero no garantiza disponibilidad continua durante mantenimiento o fallos externos."
+    },
+    {
+      "h": "5. Responsabilidad",
+      "p": "La información se ofrece solo como orientación. Lesly Tech LLC no se hace responsable de un uso inadecuado de los contenidos."
+    },
+    {
+      "h": "6. Ebooks: sin reembolsos",
+      "p": "Los ebooks y demás productos digitales se entregan de inmediato tras la compra (descarga). No son productos físicos: una vez comprados, no pueden devolverse, cambiarse ni reembolsarse por ningún motivo. Al comprar, reconoces esta condición. Las compras se realizan en plataformas de terceros (Amazon Kindle, Payhip, Gumroad, Shopify), que también aplican sus propias condiciones."
+    },
+    {
+      "h": "7. Contacto",
+      "p": "Para cualquier pregunta sobre estos términos, utilice la página de Contacto."
+    }
   ],
   "notif_nav": "Notificaciones",
   "notif_title": "Notificaciones y watchdog",
@@ -279,5 +305,21 @@
   "stat_themes": "Temas",
   "footer_tagline": "Creaciones pensadas para ser simples, útiles y accesibles — del compañero IA a las guías de Éditions LeVent.",
   "footer_explore": "Explorar",
-  "footer_legal": "Legal"
+  "footer_legal": "Legal",
+  "no_refund_note": "⚠️ Los ebooks son productos digitales entregados de inmediato tras la compra: no pueden devolverse ni reembolsarse en ningún caso.",
+  "chat_copy": "Copiar",
+  "chat_copied": "Copiado ✔",
+  "chat_copy_all": "Copiar todo",
+  "chat_attach": "Adjuntar archivo",
+  "chat_down": "Ir abajo",
+  "chat_files_hint": "Imágenes, PDF, Word, texto — 3 archivos, 5 MB máx.",
+  "auth_login": "Iniciar sesión",
+  "auth_logout": "Cerrar sesión",
+  "auth_title": "¡Bienvenido! 👋",
+  "auth_text": "Inicia sesión con Google para recibir recomendaciones personalizadas, o sigue navegando libremente sin cuenta: todo el sitio sigue abierto.",
+  "auth_consent": "Acepto recibir novedades y consejos de lectura por correo (baja con un clic).",
+  "auth_anonymous": "Continuar sin cuenta",
+  "auth_hello": "Hola",
+  "auth_error": "No se pudo iniciar sesión. Inténtalo de nuevo o continúa sin cuenta.",
+  "auth_privacy": "Solo recibimos tu nombre, correo y foto de Google. Ver la política de privacidad."
 }

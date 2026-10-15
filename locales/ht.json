@@ -165,6 +165,10 @@
     {
       "h": "6. Kontak",
       "p": "Pou nenpòt kesyon sou politik sa a, kontakte Lesly Tech LLC nan kanal yo endike sou sit sa a."
+    },
+    {
+      "h": "Koneksyon Google ak imèl",
+      "p": "Koneksyon ak Google pa obligatwa : tout sit la rete louvri san kont. Si w konekte, nou resevwa sèlman non w, adrès imèl ou ak foto pwofil Google ou. Answit nou mete ansanm ak kont ou paj ou gade yo, klik ou fè sou boutik yo ak kesyon ou poze asistan an, pou nou ka rekòmande w sa ki bon pou ou. Nou voye w imèl (nouvèl, konsèy, rapèl) sèlman si w te koche bwat dakò a ; chak imèl gen yon lyen pou w dezabòne an yon klik. Ou ka mande nou efase done w nenpòt ki lè nan paj Kontak la."
     }
   ],
   "privacy_title": "Politik konfidansyalite",
@@ -200,12 +204,34 @@
   "terms_title": "Kondisyon itilizasyon",
   "terms_intro": "Lè w antre sou sit sa a, w dakò ak kondisyon sa yo.",
   "terms_sections": [
-    { "h": "1. Objè", "p": "Sit sa a prezante aplikasyon, ebook ak sèvis Lesly Tech LLC. Li pa vann pwodwi dirèkteman epi li pa kolekte peman sou entènèt." },
-    { "h": "2. Pwopriyete entelektyèl", "p": "Tout kontni sit la ak zèv prezante yo rete pwopriyete Lesly Tech LLC, sof si yo di lòtman." },
-    { "h": "3. Lyen ekstèn", "p": "Bouton Google Play, Payhip, Gumroad oswa Shopify mennen sou platfòm twazyèm pati ki gen pwòp kondisyon yo." },
-    { "h": "4. Disponibilite", "p": "Lesly Tech LLC fè efò pou kenbe sit la aksesib, men li pa garanti disponibilite kontinyèl pandan antretyen oswa pàn ekstèn." },
-    { "h": "5. Responsabilite", "p": "Enfòmasyon yo bay sèvi kòm endikasyon. Lesly Tech LLC pa ka responsab pou move itilizasyon kontni yo." },
-    { "h": "6. Kontak", "p": "Pou nenpòt kesyon sou kondisyon sa yo, itilize paj Kontak la." }
+    {
+      "h": "1. Objè",
+      "p": "Sit sa a prezante aplikasyon, ebook ak sèvis Lesly Tech LLC. Li pa vann pwodwi dirèkteman epi li pa kolekte peman sou entènèt."
+    },
+    {
+      "h": "2. Pwopriyete entelektyèl",
+      "p": "Tout kontni sit la ak zèv prezante yo rete pwopriyete Lesly Tech LLC, sof si yo di lòtman."
+    },
+    {
+      "h": "3. Lyen ekstèn",
+      "p": "Bouton Google Play, Payhip, Gumroad oswa Shopify mennen sou platfòm twazyèm pati ki gen pwòp kondisyon yo."
+    },
+    {
+      "h": "4. Disponibilite",
+      "p": "Lesly Tech LLC fè efò pou kenbe sit la aksesib, men li pa garanti disponibilite kontinyèl pandan antretyen oswa pàn ekstèn."
+    },
+    {
+      "h": "5. Responsabilite",
+      "p": "Enfòmasyon yo bay sèvi kòm endikasyon. Lesly Tech LLC pa ka responsab pou move itilizasyon kontni yo."
+    },
+    {
+      "h": "6. Ebook : okenn ranbousman",
+      "p": "Ebook ak lòt pwodwi nimerik yo rive touswit apre acha a (telechajman). Se pa pwodwi fizik : depi w fin achte, yo pa ka retounen, chanje ni ranbouse, kèlkeswa rezon an. Lè w achte, ou rekonèt kondisyon sa a. Acha yo fèt sou platfòm lòt moun (Amazon Kindle, Payhip, Gumroad, Shopify) ki aplike pwòp kondisyon pa yo tou."
+    },
+    {
+      "h": "7. Kontak",
+      "p": "Pou nenpòt kesyon sou kondisyon sa yo, itilize paj Kontak la."
+    }
   ],
   "notif_nav": "Notifikasyon",
   "notif_title": "Notifikasyon & watchdog",
@@ -279,5 +305,21 @@
   "stat_themes": "Tèm",
   "footer_tagline": "Kreyasyon ki fèt pou senp, itil epi aksesib — de konpayon IA a gid Éditions LeVent yo.",
   "footer_explore": "Eksplore",
-  "footer_legal": "Legal"
+  "footer_legal": "Legal",
+  "no_refund_note": "⚠️ Ebook se yon pwodwi nimerik ou resevwa touswit apre acha a : yo pa ka retounen ni ranbouse nan okenn ka.",
+  "chat_copy": "Kopye",
+  "chat_copied": "Kopye ✔",
+  "chat_copy_all": "Kopye tout",
+  "chat_attach": "Mete yon fichye",
+  "chat_down": "Desann anba",
+  "chat_files_hint": "Imaj, PDF, Word, tèks — 3 fichye, 5 Mo maksimòm.",
+  "auth_login": "Konekte",
+  "auth_logout": "Dekonekte",
+  "auth_title": "Byenveni ! 👋",
+  "auth_text": "Konekte ak Google pou w jwenn rekòmandasyon pèsonèl, oswa kontinye san kont : tout sit la rete louvri pou ou.",
+  "auth_consent": "Mwen dakò resevwa nouvèl ak konsèy lekti pa imèl (dezabòne an yon klik).",
+  "auth_anonymous": "Kontinye san kont",
+  "auth_hello": "Bonjou",
+  "auth_error": "Koneksyon an pa mache. Eseye ankò oswa kontinye san kont.",
+  "auth_privacy": "Nou resevwa sèlman non w, imèl ou ak foto Google ou. Gade politik konfidansyalite a."
 }

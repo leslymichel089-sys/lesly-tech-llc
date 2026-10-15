@@ -15,15 +15,15 @@ const PROVIDERS = [
     env: 'DEEPSEEK', help: 'platform.deepseek.com → API keys' },
   { id: 'kimi', name: 'Kimi (Moonshot)', kind: 'openai', base: 'https://api.moonshot.ai/v1', model: 'kimi-k2.6',
     env: 'KIMI', help: 'platform.moonshot.ai → API Keys' },
-  { id: 'anthropic', name: 'Anthropic (Claude)', kind: 'anthropic', base: 'https://api.anthropic.com/v1', model: 'claude-haiku-5-5',
+  { id: 'anthropic', name: 'Anthropic (Claude)', kind: 'anthropic', vision: true, base: 'https://api.anthropic.com/v1', model: 'claude-haiku-5-5',
     env: 'ANTHROPIC', help: 'console.anthropic.com → API Keys' },
-  { id: 'openai', name: 'OpenAI', kind: 'openai', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini',
+  { id: 'openai', name: 'OpenAI', kind: 'openai', vision: true, base: 'https://api.openai.com/v1', model: 'gpt-4o-mini',
     env: 'OPENAI', help: 'platform.openai.com → API keys' },
-  { id: 'gemini', name: 'Google Gemini', kind: 'openai', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash',
+  { id: 'gemini', name: 'Google Gemini', kind: 'openai', vision: true, base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash',
     env: 'GEMINI', help: 'aistudio.google.com → Get API key' },
   { id: 'groq', name: 'Groq', kind: 'openai', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile',
     env: 'GROQ', help: 'console.groq.com → API Keys' },
-  { id: 'openrouter', name: 'OpenRouter', kind: 'openai', base: 'https://openrouter.ai/api/v1', model: 'openrouter/auto',
+  { id: 'openrouter', name: 'OpenRouter', kind: 'openai', vision: true, base: 'https://openrouter.ai/api/v1', model: 'openrouter/auto',
     env: 'OPENROUTER', help: 'openrouter.ai → Keys' },
   { id: 'mistral', name: 'Mistral', kind: 'openai', base: 'https://api.mistral.ai/v1', model: 'mistral-small-latest',
     env: 'MISTRAL', help: 'console.mistral.ai → API Keys' },
@@ -82,9 +82,26 @@ async function requestJson(url, { method = 'POST', headers = {}, body } = {}) {
   return json;
 }
 
-// messages : [{ role: 'user'|'assistant', content }], system : texte.
+// Un message peut porter des images : { role, content, images: [{ mime, b64 }] }.
+function toAnthropic(m) {
+  if (!m.images || !m.images.length) return { role: m.role, content: m.content };
+  return { role: m.role, content: [
+    ...m.images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.b64 } })),
+    { type: 'text', text: m.content || ' ' },
+  ] };
+}
+function toOpenAI(m) {
+  if (!m.images || !m.images.length) return { role: m.role, content: m.content };
+  return { role: m.role, content: [
+    { type: 'text', text: m.content || ' ' },
+    ...m.images.map((i) => ({ type: 'image_url', image_url: { url: `data:${i.mime};base64,${i.b64}` } })),
+  ] };
+}
+
+// messages : [{ role: 'user'|'assistant', content, images? }], system : texte.
 async function callProvider(cfg, { system, messages, maxTokens = 700, temperature = 0.6 }) {
   if (cfg.kind === 'anthropic') {
+    messages = messages.map(toAnthropic);
     const data = await requestJson(`${cfg.baseUrl}/messages`, {
       headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' },
       body: { model: cfg.model, max_tokens: maxTokens, temperature, system: system || undefined, messages },
@@ -100,7 +117,7 @@ async function callProvider(cfg, { system, messages, maxTokens = 700, temperatur
     headers,
     body: {
       model: cfg.model,
-      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages],
+      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages.map(toOpenAI)],
       max_tokens: maxTokens,
       temperature,
     },
@@ -138,16 +155,19 @@ function extraProviders() {
 }
 
 // Liste ordonnée des fournisseurs utilisables maintenant.
-function activeChain() {
-  const chain = PROVIDERS.map(providerConfig).filter((c) => c.apiKey)
+function activeChain(needVision = false) {
+  const chain = PROVIDERS.map(providerConfig).filter((c) => c.apiKey && (!needVision || c.vision))
     .map((c) => ({ id: c.id, name: c.name, model: c.model, run: (opts) => callProvider(c, opts) }));
-  return [...chain, ...extraProviders()];
+  return needVision ? chain : [...chain, ...extraProviders()];
 }
+
+function hasVision() { return activeChain(true).length > 0; }
 
 // chat({ system, messages, maxTokens }) -> { text, provider }
 // Essaie chaque fournisseur dans l'ordre ; saute ceux en pause (sauf s'il n'en reste aucun).
 async function chat(opts) {
-  const chain = activeChain();
+  const needVision = (opts.messages || []).some((m) => m.images && m.images.length);
+  const chain = activeChain(needVision);
   if (!chain.length) {
     const err = new Error('IA non configurée — ajoute au moins une clé dans /admin/ai.');
     err.code = 'AI_NOT_CONFIGURED';
@@ -241,4 +261,4 @@ function status() {
   });
 }
 
-module.exports = { PROVIDERS, FIELDS, chat, generateDescription, onEvent, testProvider, status };
+module.exports = { PROVIDERS, FIELDS, chat, hasVision, generateDescription, onEvent, testProvider, status };
