@@ -785,7 +785,17 @@ webhooks.register(app);
 app.get('/admin/ventes', requireLogin, (req, res) => {
   const sales = dbm.listSales();
   const total = sales.filter((s) => s.kind === 'sale').reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
-  res.render('admin/ventes', { page: 'admin', sales, total, urls: webhooks.webhookUrls(SITE_URL) });
+  res.render('admin/ventes', { page: 'admin', sales, total, urls: webhooks.webhookUrls(SITE_URL),
+    verif: webhooks.verification(), saved: req.query.saved === '1', tested: req.query.test === '1' });
+});
+app.post('/admin/ventes/verification', requireLogin, (req, res) => {
+  for (const k of ['payhip_api_key', 'gumroad_access_token', 'shopify_webhook_secret']) {
+    const v = String(req.body[k] || '').trim();
+    if (v && v !== MASK) dbm.setSetting(k, v);
+  }
+  const seller = String(req.body.gumroad_seller_id || '').trim();
+  if (seller) dbm.setSetting('gumroad_seller_id', seller);
+  res.redirect('/admin/ventes?saved=1');
 });
 app.post('/admin/ventes/test', requireLogin, async (req, res) => {
   await webhooks.record({ platform: 'test', external_id: 'test-' + Date.now(), kind: 'test',

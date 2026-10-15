@@ -1,9 +1,13 @@
 // webhooks.js — réception des ventes Payhip, Gumroad et Shopify.
 //
-// Chaque plateforme appelle une URL secrète du site à chaque achat :
-//   /webhooks/payhip?k=SECRET   /webhooks/gumroad?k=SECRET   /webhooks/shopify?k=SECRET
-// La vente est enregistrée (table sales) puis notifiée sur tous les canaux
-// (e-mail, Telegram, WhatsApp, SMS). Shopify peut aussi être authentifié par HMAC.
+// Chaque plateforme appelle le site à chaque achat :
+//   /webhooks/payhip   /webhooks/gumroad   /webhooks/shopify
+// Chaque vente est VÉRIFIÉE auprès de sa plateforme (aucun secret dans l'URL) :
+//   Payhip  : champ « signature » = sha256(clé API Payhip)
+//   Gumroad : seller_id du compte + (si jeton fourni) confirmation via l'API Gumroad
+//   Shopify : signature HMAC (en-tête X-Shopify-Hmac-Sha256)
+// Les anciennes URL avec ?k=SECRET restent acceptées.
+// La vente est enregistrée (table sales) puis notifiée sur tous les canaux.
 const crypto = require('crypto');
 const dbm = require('./db');
 const watchdog = require('./watchdog');
@@ -20,6 +24,32 @@ function safeEqual(a, b) {
 }
 
 function tokenOk(req) { return safeEqual(req.query.k, webhookSecret()); }
+
+const DEFAULT_GUMROAD_SELLER = 'KnlsWUg7XR1Y_R02ilR0MA==';
+const cfg = (env, key, dflt = '') => process.env[env] || dbm.getSetting(key) || dflt;
+
+function payhipSignatureOk(req) {
+  const key = cfg('PAYHIP_API_KEY', 'payhip_api_key');
+  const sig = req.body && req.body.signature;
+  if (!key || !sig) return false;
+  return safeEqual(crypto.createHash('sha256').update(key).digest('hex'), sig);
+}
+
+// Gumroad n'envoie pas de signature : on contrôle le seller_id, et si un jeton d'accès
+// Gumroad est configuré, on demande à l'API Gumroad de confirmer que la vente existe.
+async function gumroadOk(req) {
+  const b = req.body || {};
+  if (!safeEqual(b.seller_id, cfg('GUMROAD_SELLER_ID', 'gumroad_seller_id', DEFAULT_GUMROAD_SELLER))) return false;
+  const token = cfg('GUMROAD_ACCESS_TOKEN', 'gumroad_access_token');
+  if (!token || String(b.test) === 'true') return true;
+  try {
+    const r = await fetch(`https://api.gumroad.com/v2/sales/${encodeURIComponent(b.sale_id || '')}`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000),
+    });
+    const j = await r.json();
+    return !!(j && j.success && j.sale && j.sale.id === b.sale_id);
+  } catch (e) { return false; }
+}
 
 function shopifyHmacOk(req) {
   const secret = process.env.SHOPIFY_WEBHOOK_SECRET || dbm.getSetting('shopify_webhook_secret');
@@ -83,7 +113,7 @@ function fromShopify(b) {
 
 function register(app) {
   const handle = (platform, parse, extraAuth) => async (req, res) => {
-    if (!tokenOk(req) && !(extraAuth && extraAuth(req))) return res.status(401).json({ ok: false });
+    if (!tokenOk(req) && !(extraAuth && await extraAuth(req))) return res.status(401).json({ ok: false });
     try {
       const sale = parse(req.body || {});
       if (!sale.external_id) sale.external_id = crypto.createHash('sha1').update(JSON.stringify(req.body || {})).digest('hex');
@@ -94,18 +124,27 @@ function register(app) {
       res.status(500).json({ ok: false });
     }
   };
-  app.post('/webhooks/payhip', handle('payhip', fromPayhip));
-  app.post('/webhooks/gumroad', handle('gumroad', fromGumroad));
+  app.post('/webhooks/payhip', handle('payhip', fromPayhip, payhipSignatureOk));
+  app.post('/webhooks/gumroad', handle('gumroad', fromGumroad, gumroadOk));
   app.post('/webhooks/shopify', handle('shopify', fromShopify, shopifyHmacOk));
 }
 
 function webhookUrls(siteUrl) {
-  const k = webhookSecret();
   return {
-    payhip: `${siteUrl}/webhooks/payhip?k=${k}`,
-    gumroad: `${siteUrl}/webhooks/gumroad?k=${k}`,
-    shopify: `${siteUrl}/webhooks/shopify?k=${k}`,
+    payhip: `${siteUrl}/webhooks/payhip`,
+    gumroad: `${siteUrl}/webhooks/gumroad`,
+    shopify: `${siteUrl}/webhooks/shopify`,
   };
 }
 
-module.exports = { register, webhookUrls, record };
+// État de la vérification, pour la page admin.
+function verification() {
+  return {
+    payhip: !!cfg('PAYHIP_API_KEY', 'payhip_api_key'),
+    gumroadToken: !!cfg('GUMROAD_ACCESS_TOKEN', 'gumroad_access_token'),
+    gumroadSeller: cfg('GUMROAD_SELLER_ID', 'gumroad_seller_id', DEFAULT_GUMROAD_SELLER),
+    shopify: !!(process.env.SHOPIFY_WEBHOOK_SECRET || dbm.getSetting('shopify_webhook_secret')),
+  };
+}
+
+module.exports = { register, webhookUrls, verification, record };

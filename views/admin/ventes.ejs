@@ -15,9 +15,38 @@
   </div>
 </section>
 
+<% if (saved) { %><p class="alert alert-ok">Réglages de vérification enregistrés.</p><% } %>
+<% if (tested) { %><p class="alert alert-ok">Vente de test enregistrée : tu dois avoir reçu l'alerte sur tes canaux configurés.</p><% } %>
+
 <section class="dash-panel">
-  <h2>Brancher tes boutiques (à faire une seule fois)</h2>
-  <p class="muted small">Copie chaque adresse dans la plateforme correspondante. Elles contiennent une clé secrète : ne les partage pas.</p>
+  <h2>Vérification des ventes</h2>
+  <p class="muted small">Chaque vente reçue est vérifiée auprès de sa plateforme : une fausse vente envoyée par un inconnu est rejetée.</p>
+  <ul class="mini-list">
+    <li>Payhip : <strong><%= verif.payhip ? '✔ clé API enregistrée' : '✖ clé API Payhip à saisir ci-dessous (sinon les ventes Payhip sont refusées)' %></strong></li>
+    <li>Gumroad : contrôle du seller_id <code><%= verif.gumroadSeller %></code><%= verif.gumroadToken ? " + confirmation par l'API ✔" : " (jeton d'accès facultatif pour une vérification renforcée)" %></li>
+    <li>Shopify : <strong><%= verif.shopify ? '✔ secret de signature enregistré' : '✖ secret de signature à saisir (affiché par Shopify sous la liste des webhooks)' %></strong></li>
+  </ul>
+  <form method="post" action="/admin/ventes/verification" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-row">
+      <label>Clé API Payhip (Payhip → Paramètres → Promoteur)
+        <input type="password" name="payhip_api_key" value="<%= verif.payhip ? '••••••••' : '' %>" autocomplete="new-password"></label>
+      <label>Secret de signature Shopify
+        <input type="password" name="shopify_webhook_secret" value="<%= verif.shopify ? '••••••••' : '' %>" autocomplete="new-password"></label>
+    </div>
+    <div class="form-row">
+      <label>Gumroad seller_id
+        <input type="text" name="gumroad_seller_id" value="<%= verif.gumroadSeller %>"></label>
+      <label>Jeton d'accès Gumroad (facultatif)
+        <input type="password" name="gumroad_access_token" value="<%= verif.gumroadToken ? '••••••••' : '' %>" autocomplete="new-password"></label>
+    </div>
+    <div><button class="btn" type="submit">Enregistrer</button></div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2>Adresses à mettre dans tes boutiques (une seule fois)</h2>
+  <p class="muted small">Ces adresses ne contiennent aucun secret.</p>
   <div class="cred-group">
     <h3>Payhip</h3>
     <p class="small">Payhip → <strong>Settings → Developer → Webhooks</strong> → ajoute l'URL ci-dessous, événement <em>paid</em> (et <em>refunded</em>).</p>
