@@ -6,3 +6,8 @@ data/*.db-shm
 data/*.db-wal
 public/uploads/*
 !public/uploads/.gitkeep
+
+# Projet Toro509 (hors site)
+toro509-ai-deploy/
+toro509-ai-web/
+toro509-ai-index-original-*.html
