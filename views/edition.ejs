@@ -1,0 +1,88 @@
+<%- include('partials/header') %>
+
+<section class="page-head">
+  <h1><%= t('edition_title') %></h1>
+  <p class="muted"><%= t('edition_intro') %></p>
+</section>
+
+<% if (status === 'sent') { %><p class="alert alert-ok" role="status"><%= t('edition_status_sent') %></p><% } %>
+<% if (status === 'invalid') { %><p class="alert alert-error" role="alert"><%= t('edition_status_invalid') %></p><% } %>
+<% if (status === 'limited') { %><p class="alert alert-error" role="alert"><%= t('edition_status_limited') %></p><% } %>
+
+<section class="dash-panel">
+  <div class="publisher-card">
+    <img src="/img/levent-logo.jpg" alt="Les Éditions LeVent" width="84" height="84">
+    <div>
+      <h2 style="margin-bottom:6px">Les Éditions LeVent</h2>
+      <p style="margin:0"><%= t('edition_contact_note') %> <a href="mailto:<%= publisherEmail %>"><%= publisherEmail %></a></p>
+    </div>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('edition_packs_title') %></h2>
+  <% var packs = [
+    { slug: 'mise-en-forme',    name: t('edition_pack1_name'), price: t('edition_pack1_price'), desc: t('edition_pack1_desc') },
+    { slug: 'couverture',       name: t('edition_pack2_name'), price: t('edition_pack2_price'), desc: t('edition_pack2_desc') },
+    { slug: 'correction',       name: t('edition_pack3_name'), price: t('edition_pack3_price'), desc: t('edition_pack3_desc') },
+    { slug: 'pack-publication', name: t('edition_pack4_name'), price: t('edition_pack4_price'), desc: t('edition_pack4_desc') },
+    { slug: 'pack-lancement',   name: t('edition_pack5_name'), price: t('edition_pack5_price'), desc: t('edition_pack5_desc') }
+  ]; %>
+  <% packs.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('edition_rights_title') %></h2>
+  <p><%= t('edition_rights_text') %></p>
+  <h2><%= t('edition_how_title') %></h2>
+  <p style="white-space: pre-line"><%= t('edition_how_text') %></p>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('edition_form_title') %></h2>
+  <form method="post" action="/publiez-votre-livre" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <%# Champ piège anti-robots : invisible pour les humains, laissé vide. %>
+    <div style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+      <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+    </div>
+    <div class="form-row">
+      <label><%= t('edition_form_author') %>
+        <input type="text" name="author" autocomplete="name" required maxlength="100" value="<%= form.author || '' %>"></label>
+      <label><%= t('edition_form_email') %>
+        <input type="email" name="email" autocomplete="email" required maxlength="200" value="<%= form.email || '' %>"></label>
+    </div>
+    <div class="form-row">
+      <label><%= t('edition_form_booktitle') %>
+        <input type="text" name="title" required maxlength="200" value="<%= form.title || '' %>"></label>
+      <label><%= t('edition_form_genre') %>
+        <input type="text" name="genre" maxlength="100" value="<%= form.genre || '' %>"></label>
+    </div>
+    <div class="form-row">
+      <label><%= t('edition_form_state') %>
+        <select name="state" required>
+          <option value="idee" <%= form.state === 'idee' ? 'selected' : '' %>><%= t('edition_form_state_idea') %></option>
+          <option value="en-cours" <%= form.state === 'en-cours' ? 'selected' : '' %>><%= t('edition_form_state_progress') %></option>
+          <option value="termine" <%= form.state === 'termine' ? 'selected' : '' %>><%= t('edition_form_state_done') %></option>
+        </select></label>
+      <label><%= t('edition_form_pack') %>
+        <select name="pack" required>
+          <% packs.forEach(function(p){ %>
+            <option value="<%= p.slug %>" <%= form.pack === p.slug ? 'selected' : '' %>><%= p.name %> — <%= p.price %></option>
+          <% }) %>
+          <option value="conseil" <%= form.pack === 'conseil' ? 'selected' : '' %>><%= t('edition_form_pack_unsure') %></option>
+        </select></label>
+    </div>
+    <label><%= t('edition_form_message') %>
+      <textarea name="message" rows="5" maxlength="5000"><%= form.message || '' %></textarea></label>
+    <p class="muted small"><%= t('edition_form_note') %></p>
+    <div><button class="btn" type="submit"><%= t('edition_form_submit') %></button></div>
+  </form>
+</section>
+
+<%- include('partials/footer') %>

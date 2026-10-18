@@ -107,6 +107,18 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   ip TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS edition_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author TEXT DEFAULT '',
+  email TEXT DEFAULT '',
+  title TEXT DEFAULT '',
+  genre TEXT DEFAULT '',
+  state TEXT DEFAULT '',               -- idee | en-cours | termine
+  pack TEXT DEFAULT '',                -- mise-en-forme | couverture | correction | pack-publication | pack-lancement | conseil
+  message TEXT DEFAULT '',
+  ip TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // Comptes visiteurs (connexion Google facultative) et relances e-mail avec consentement.
@@ -631,6 +643,12 @@ const addContactMessage = (m) =>
 const listContactMessages = () => db.prepare('SELECT * FROM contact_messages ORDER BY id DESC LIMIT 500').all();
 const countContactMessages = () => db.prepare('SELECT COUNT(*) AS n FROM contact_messages').get().n;
 
+// --- Demandes d'édition (page « Publiez votre livre », Les Éditions LeVent) ---
+const addEditionRequest = (r) => db.prepare(`INSERT INTO edition_requests (author, email, title, genre, state, pack, message, ip)
+  VALUES (@author, @email, @title, @genre, @state, @pack, @message, @ip)`).run(r);
+const listEditionRequests = () => db.prepare('SELECT * FROM edition_requests ORDER BY id DESC LIMIT 500').all();
+const countEditionRequests = () => db.prepare('SELECT COUNT(*) AS n FROM edition_requests').get().n;
+
 // --- Ventes (webhooks) ---
 // Retourne true si la vente est nouvelle (false si déjà reçue : les plateformes renvoient parfois).
 const addSale = (s) => {
@@ -648,4 +666,4 @@ const logError = (message) => {
   db.prepare('DELETE FROM error_log WHERE id NOT IN (SELECT id FROM error_log ORDER BY id DESC LIMIT 1000)').run();
 };
 
-module.exports = { addSale, listSales, logError, db, DATA_DIR, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus, rateCount, rateHit, rateClear, ratePurge, addContactMessage, listContactMessages, countContactMessages };
+module.exports = { addSale, listSales, logError, db, DATA_DIR, getSetting, setSetting, qAll, qActive, qById, qByType, rowToProduct, logVisit, logClick, stats, recentNotifLog, currentHour, countVisitHour, logNotif, addSubscriber, listSubscribers, countSubscribers, setAppStatus, listAppStatus, rateCount, rateHit, rateClear, ratePurge, addContactMessage, listContactMessages, countContactMessages, addEditionRequest, listEditionRequests, countEditionRequests };

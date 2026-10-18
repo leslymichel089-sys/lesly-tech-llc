@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+
+<% var ETATS = { 'idee': 'Idée', 'en-cours': 'En cours d\'écriture', 'termine': 'Terminé' };
+   var FORMULES = {
+     'mise-en-forme': 'Mise en forme ebook — 99 $',
+     'couverture': 'Couverture — 79 $',
+     'correction': 'Correction — dès 149 $',
+     'pack-publication': 'Pack Publication complète — 299 $',
+     'pack-lancement': 'Pack Lancement — 449 $',
+     'conseil': 'À conseiller'
+   }; %>
+
+<section class="page-head">
+  <h1>Demandes d'édition — Les Éditions LeVent</h1>
+  <p class="muted"><%= count %> demande(s) reçue(s) via la page « Publiez votre livre ».</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <% if (requests.length === 0) { %>
+    <p class="muted">Aucune demande pour le moment.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Date</th><th>Auteur</th><th>Email</th><th>Titre</th><th>Genre</th><th>État</th><th>Formule</th><th>Message</th></tr></thead>
+        <tbody>
+          <% requests.forEach(function(r){ %>
+            <tr>
+              <td class="muted small"><%= r.created_at %></td>
+              <td><%= r.author %></td>
+              <td><a href="mailto:<%= r.email %>"><%= r.email %></a></td>
+              <td><%= r.title %></td>
+              <td><%= r.genre %></td>
+              <td><%= ETATS[r.state] || r.state %></td>
+              <td><%= FORMULES[r.pack] || r.pack %></td>
+              <td style="white-space: pre-wrap"><%= r.message %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

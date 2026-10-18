@@ -325,6 +325,47 @@ app.post('/contact', (req, res) => {
   renderContact(res, { status: 'sent' });
 });
 
+// ---------- Publiez votre livre (Les Éditions LeVent) ----------
+// Anti-spam demandes d'édition : mêmes limites que le contact (3/heure par IP, 30/heure au total).
+const EDITION_IP_MAX = 3, EDITION_ALL_MAX = 30, EDITION_WINDOW = 3600 * 1000;
+const EDITION_STATES = ['idee', 'en-cours', 'termine'];
+const EDITION_PACKS = ['mise-en-forme', 'couverture', 'correction', 'pack-publication', 'pack-lancement', 'conseil'];
+const renderEdition = (res, extra = {}) =>
+  res.render('edition', { page: 'edition', status: null, form: {}, ...extra });
+
+app.get('/publiez-votre-livre', (req, res) => renderEdition(res));
+app.post('/publiez-votre-livre', (req, res) => {
+  const form = {
+    author: String(req.body.author || '').trim().slice(0, 100),
+    email: String(req.body.email || '').trim().slice(0, 200),
+    title: String(req.body.title || '').trim().slice(0, 200),
+    genre: String(req.body.genre || '').trim().slice(0, 100),
+    state: EDITION_STATES.includes(req.body.state) ? req.body.state : '',
+    pack: EDITION_PACKS.includes(req.body.pack) ? req.body.pack : '',
+    message: String(req.body.message || '').trim().slice(0, 5000),
+  };
+  // Un robot remplit le champ piège « website » : on fait semblant d'accepter, sans rien enregistrer.
+  if (String(req.body.website || '').trim()) return renderEdition(res, { status: 'sent' });
+
+  if (!form.author || !form.title || !form.state || !form.pack
+    || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    return res.status(400).render('edition', { page: 'edition', status: 'invalid', form });
+  }
+  const ip = req.ip || 'unknown';
+  if (dbm.rateCount('edition_ip', ip, EDITION_WINDOW) >= EDITION_IP_MAX
+    || dbm.rateCount('edition_all', '*', EDITION_WINDOW) >= EDITION_ALL_MAX) {
+    return res.status(429).render('edition', { page: 'edition', status: 'limited', form });
+  }
+  dbm.rateHit('edition_ip', ip);
+  dbm.rateHit('edition_all', '*');
+
+  // Toujours conservée en base (consultable dans /admin/edition), puis notifiée si un canal existe.
+  dbm.addEditionRequest({ ...form, ip });
+  notify.sendAll('Nouvelle demande d\'édition — Les Éditions LeVent',
+    `Auteur: ${form.author}\nEmail: ${form.email}\nTitre: ${form.title}\nGenre: ${form.genre}\nÉtat du manuscrit: ${form.state}\nFormule: ${form.pack}\n\n${form.message}`).catch(() => {});
+  renderEdition(res, { status: 'sent' });
+});
+
 // ---------- Newsletter ----------
 app.post('/newsletter', (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -359,6 +400,7 @@ app.get('/sitemap.xml', (req, res) => {
     SITE_URL + '/propriete-intellectuelle',
     SITE_URL + '/conditions',
     SITE_URL + '/contact',
+    SITE_URL + '/publiez-votre-livre',
     ...products.map((p) => SITE_URL + '/produit/' + p.id),
   ];
   const langs = ['fr', 'en', 'ht', 'es'];
@@ -877,6 +919,14 @@ app.get('/admin/messages', requireLogin, (req, res) => {
     page: 'admin',
     messages: dbm.listContactMessages(),
     count: dbm.countContactMessages(),
+  });
+});
+// ---------- Admin : demandes d'édition (Les Éditions LeVent) ----------
+app.get('/admin/edition', requireLogin, (req, res) => {
+  res.render('admin/edition', {
+    page: 'admin',
+    requests: dbm.listEditionRequests(),
+    count: dbm.countEditionRequests(),
   });
 });
 // ---------- Admin : notifications / watchdog ----------
