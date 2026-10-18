@@ -113,19 +113,64 @@ async function callProvider(cfg, { system, messages, maxTokens = 700, temperatur
   }
   const headers = { Authorization: `Bearer ${cfg.apiKey}` };
   if (cfg.id === 'openrouter') { headers['HTTP-Referer'] = process.env.SITE_URL || 'https://lesly-tech-llc.onrender.com'; headers['X-Title'] = 'Lesly Tech LLC'; }
-  const data = await requestJson(`${cfg.baseUrl}/chat/completions`, {
-    headers,
-    body: {
-      model: cfg.model,
-      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages.map(toOpenAI)],
-      max_tokens: maxTokens,
-      temperature,
-    },
-  });
-  const msg = data && data.choices && data.choices[0] && data.choices[0].message;
-  const text = msg && (msg.content || msg.reasoning_content);
-  if (!text || !String(text).trim()) throw new Error('réponse vide ou invalide');
-  return String(text).trim();
+
+  // Réglages adaptés automatiquement selon les exigences du modèle (mémorisés par modèle) :
+  // - température imposée (ex. Kimi K2.5/K2.6, OpenAI « reasoning » : seulement 1) ;
+  // - « max_completion_tokens » au lieu de « max_tokens » ;
+  // - modèles qui « réfléchissent » : plus de place pour que la réponse finale arrive.
+  const key = `${cfg.id}:${cfg.model}`;
+  const learned = paramCache[key] || {};
+  let temp = learned.temperature !== undefined ? learned.temperature : temperature;
+  let field = learned.field || 'max_tokens';
+  let budget = Math.max(maxTokens, learned.minTokens || 0);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let data;
+    try {
+      data = await requestJson(`${cfg.baseUrl}/chat/completions`, {
+        headers,
+        body: {
+          model: cfg.model,
+          messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages.map(toOpenAI)],
+          [field]: budget,
+          ...(temp === null ? {} : { temperature: temp }),
+        },
+      });
+    } catch (e) {
+      const m = e.message || '';
+      if (/temperature/i.test(m) && temp !== 1) { temp = /only 1|must be 1|1\.0/i.test(m) || temp !== null ? 1 : null; paramCache[key] = { ...paramCache[key], temperature: temp }; continue; }
+      if (/max_completion_tokens/i.test(m) && field === 'max_tokens') { field = 'max_completion_tokens'; paramCache[key] = { ...paramCache[key], field }; continue; }
+      throw e;
+    }
+    const choice = data && data.choices && data.choices[0];
+    const msg = choice && choice.message;
+    let text = msg && msg.content;
+    if (Array.isArray(text)) text = text.map((p) => (typeof p === 'string' ? p : p.text || '')).join('');
+    if (text && String(text).trim()) return String(text).trim();
+    // Réponse vide : modèle qui a épuisé sa place à « réfléchir » -> on lui en donne plus (une fois ou deux).
+    if ((choice && choice.finish_reason === 'length') || (msg && msg.reasoning_content)) {
+      if (budget < 4000) { budget = Math.min(4000, Math.max(budget * 4, 1500)); paramCache[key] = { ...paramCache[key], minTokens: budget }; continue; }
+    }
+    throw new Error('réponse vide (le modèle n\'a renvoyé aucun texte final)');
+  }
+  throw new Error('le modèle refuse les réglages envoyés');
+}
+const paramCache = {};
+
+// Explication en français des erreurs fréquentes des fournisseurs.
+function explainError(message, providerId) {
+  const m = String(message || '');
+  if (/401|invalid.?auth|incorrect api key|unauthori[sz]ed|invalid api key|authentication/i.test(m)) {
+    return providerId === 'kimi'
+      ? "Clé refusée. Chez Kimi, la clé dépend de la région : une clé créée sur platform.moonshot.ai s'utilise avec l'URL https://api.moonshot.ai/v1 ; une clé créée sur platform.moonshot.cn s'utilise avec https://api.moonshot.cn/v1."
+      : 'Clé refusée : vérifie que la clé est complète et toujours active chez le fournisseur.';
+  }
+  if (/suspend|quota|balance|insufficient|billing|credit|payment|recharge/i.test(m)) return 'Solde insuffisant ou compte suspendu : recharge ton compte chez ce fournisseur (la liste des modèles reste visible, mais aucun appel ne passe).';
+  if (/429|rate.?limit|overload|too many/i.test(m)) return 'Fournisseur surchargé ou limite de requêtes atteinte : réessaie dans quelques minutes.';
+  if (/404|not.?found|does not exist|no such model|permission/i.test(m)) return "Modèle inconnu ou non autorisé pour ton compte : choisis-en un autre dans la liste.";
+  if (/timeout|aborted|timed out/i.test(m)) return 'Le fournisseur a mis trop de temps à répondre.';
+  if (/réponse vide/i.test(m)) return "Le modèle n'a rien renvoyé : c'est souvent un modèle spécialisé (audio, image, modération) qui ne sert pas à discuter.";
+  if (/temperature|refuse les réglages/i.test(m)) return "Le modèle refuse les réglages envoyés, même après adaptation automatique.";
+  return '';
 }
 
 // Providers génériques ({prompt, lang} -> {text}) et OmniRoute, gardés pour compatibilité.
@@ -237,15 +282,53 @@ async function testProvider(providerId, body) {
   try { models = await listModels(cfg); } catch (e) { modelsError = e.message; }
   let chatOk = false, chatError = null, sample = '';
   try {
-    sample = (await callProvider(cfg, { messages: [{ role: 'user', content: 'Test de connexion. Réponds uniquement : OK.' }], maxTokens: 20 })).slice(0, 120);
+    sample = (await callProvider(cfg, { messages: [{ role: 'user', content: 'Test de connexion. Réponds uniquement : OK.' }], maxTokens: 200 })).slice(0, 120);
     chatOk = true;
     markOk(cfg.id);
   } catch (e) { chatError = e.message; markFail(cfg.id, e.message); }
   const modelKnown = !models.length || models.includes(cfg.model);
+  const error = chatOk ? null : (chatError || modelsError);
+  let hint = error ? explainError(error, cfg.id) : '';
+  // Kimi : si la clé est refusée, on regarde si elle appartient à l'autre région (moonshot.cn / moonshot.ai).
+  if (!chatOk && cfg.id === 'kimi' && /401|auth/i.test(error || '')) {
+    const other = /moonshot\.cn/.test(cfg.baseUrl) ? 'https://api.moonshot.ai/v1' : 'https://api.moonshot.cn/v1';
+    try {
+      await listModels({ ...cfg, baseUrl: other });
+      hint = `Ta clé Kimi fonctionne avec l'autre région : mets « ${other} » dans le champ « URL de base » de Kimi, enregistre, puis reteste.`;
+    } catch (e) { /* l'autre région refuse aussi : la clé elle-même est en cause */ }
+  }
   return {
-    ok: chatOk, error: chatOk ? null : (chatError || modelsError), models, chatOk, chatError, sample,
+    ok: chatOk, error, hint, models, chatOk, chatError, sample,
     model: cfg.model, modelKnown, latencyMs: Date.now() - started,
   };
+}
+
+// Essaie chaque modèle « de discussion » du fournisseur et rapporte ceux qui répondent vraiment.
+const NON_CHAT = /whisper|tts|speech|audio|embed|guard|moderation|rerank|image|dall-e|sora|ocr|transcri|realtime|search|computer-use|vision-preview/i;
+async function testModels(providerId, body) {
+  const cfg = effectiveConfig(providerId, body);
+  if (!cfg.apiKey) return { ok: false, error: 'Clé API manquante', results: [] };
+  let models = [];
+  try { models = await listModels(cfg); } catch (e) { return { ok: false, error: e.message, hint: explainError(e.message, cfg.id), results: [] }; }
+  const candidates = models.filter((m) => !NON_CHAT.test(m)).slice(0, 20);
+  const results = [];
+  let i = 0;
+  async function worker() {
+    while (i < candidates.length) {
+      const model = candidates[i++];
+      const t = Date.now();
+      try {
+        const sample = await callProvider({ ...cfg, model }, { messages: [{ role: 'user', content: 'Réponds uniquement : OK.' }], maxTokens: 200 });
+        results.push({ model, ok: true, ms: Date.now() - t, sample: sample.slice(0, 60) });
+      } catch (e) {
+        results.push({ model, ok: false, ms: Date.now() - t, error: e.message.slice(0, 200), hint: explainError(e.message, cfg.id) });
+      }
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  results.sort((a, b) => (b.ok - a.ok) || a.ms - b.ms);
+  if (results.some((r) => r.ok)) markOk(cfg.id);
+  return { ok: results.some((r) => r.ok), results, skipped: models.length - candidates.length };
 }
 
 // État pour l'admin et le rapport quotidien.
@@ -256,9 +339,9 @@ function status() {
     return {
       id: c.id, name: c.name, priority: i + 1, configured: !!c.apiKey, model: c.model, help: c.help,
       state: !c.apiKey ? 'absent' : s.pausedUntil > now ? 'pause' : s.ok === false ? 'erreur' : s.ok ? 'ok' : 'inconnu',
-      lastError: s.lastError || '', calls: s.calls || 0,
+      lastError: s.lastError || '', hint: s.lastError ? explainError(s.lastError, c.id) : '', calls: s.calls || 0,
     };
   });
 }
 
-module.exports = { PROVIDERS, FIELDS, chat, hasVision, generateDescription, onEvent, testProvider, status };
+module.exports = { PROVIDERS, FIELDS, chat, hasVision, generateDescription, onEvent, testProvider, testModels, explainError, status };

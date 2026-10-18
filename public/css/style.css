@@ -596,3 +596,7 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
   border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
 .model-pill:hover { border-color: var(--brand); color: var(--brand); }
 .model-pill.is-current { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: var(--on-brand); border-color: transparent; }
+.model-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.model-row.ok .model-pill { border-color: #1e7a4c; color: #1e7a4c; }
+.model-row.ko .model-pill { opacity: .6; cursor: default; }
+#ai-test-result { white-space: pre-line; }

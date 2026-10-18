@@ -30,7 +30,7 @@
             <td class="small"><%= s.model %></td>
             <td><span class="tag <%= s.state === 'ok' ? 'tag-update' : (s.state === 'erreur' || s.state === 'pause') ? 'tag-off' : '' %>">
               <%= { absent: 'pas de clé', pause: 'en pause', erreur: 'erreur', ok: 'OK', inconnu: 'pas encore utilisé' }[s.state] %></span></td>
-            <td class="muted small"><%= s.lastError %></td>
+            <td class="muted small"><%= s.lastError %><% if (s.hint) { %><br><strong style="color:var(--ink)">→ <%= s.hint %></strong><% } %></td>
           </tr>
         <% }) %>
       </tbody>
@@ -56,6 +56,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-small btn-ghost ai-test" data-provider="<%= p.id %>" data-csrf="<%= csrfToken %>">Tester <%= p.name %></button>
+          <button type="button" class="btn btn-small btn-ghost ai-test-all" data-provider="<%= p.id %>" data-csrf="<%= csrfToken %>">Tester tous les modèles</button>
           <% if (aiCredSrc[p.id + '_key'] === 'admin') { %>
             <label class="check-row small"><input type="checkbox" name="<%= p.id %>_key_clear" value="1"> Effacer la clé</label>
           <% } %>
@@ -116,6 +117,7 @@
         if (r.latencyMs != null) msg += ' ' + r.latencyMs + ' ms.';
         if (r.chatOk && r.sample) msg += ' Réponse : « ' + r.sample + ' ».';
         if (r.error) msg += ' Détail : ' + r.error + '.';
+        if (r.hint) msg += '\n→ ' + r.hint;
         if (r.models && r.models.length && !r.modelKnown) {
           msg += r.ok
             ? ' ℹ « ' + r.model + ' » fonctionne, mais n\'apparaît plus dans la liste officielle (ancien nom) : tu peux garder ce modèle ou en choisir un ci-dessous.'
@@ -126,6 +128,58 @@
       } catch (e) {
         showResult('Erreur réseau : ' + e.message, false);
       }
+    });
+  });
+
+  // « Tester tous les modèles » : essaie chaque modèle de discussion et montre lesquels répondent vraiment.
+  document.querySelectorAll('.ai-test-all').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var provider = btn.getAttribute('data-provider');
+      showResult('Test de tous les modèles de ' + provider + ' en cours… (jusqu\'à 1 minute)', true);
+      btn.disabled = true;
+      var payload = { provider: provider, _csrf: btn.getAttribute('data-csrf') };
+      payload[provider + '_key'] = field(provider, 'key');
+      payload[provider + '_base_url'] = field(provider, 'base_url');
+      try {
+        var res = await fetch('/admin/ai/test-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        var d = await res.json();
+        var results = d.results || [];
+        var good = results.filter(function (r) { return r.ok; });
+        if (!results.length) {
+          showResult(provider + ' : impossible de lister les modèles. ' + (d.error || '') + (d.hint ? '\n→ ' + d.hint : ''), false);
+          return;
+        }
+        var msg = provider + ' : ' + good.length + ' modèle(s) sur ' + results.length + ' répondent.';
+        if (good.length) msg += ' Clique sur un modèle ✔ ci-dessous pour le choisir, puis enregistre.';
+        else {
+          // Même cause pour tous ? On l'affiche une fois, clairement.
+          var hints = results.map(function (r) { return r.hint; }).filter(Boolean);
+          if (hints.length) msg += '\n→ ' + hints[0];
+        }
+        showResult(msg, good.length > 0);
+        var box = document.getElementById('ai-models'), list = document.getElementById('ai-models-list');
+        document.getElementById('ai-models-title').textContent = 'Résultat par modèle — ' + provider;
+        list.innerHTML = '';
+        results.forEach(function (r) {
+          var row = document.createElement('div');
+          row.className = 'model-row' + (r.ok ? ' ok' : ' ko');
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'model-pill'; b.textContent = (r.ok ? '✔ ' : '✖ ') + r.model;
+          b.disabled = !r.ok;
+          b.addEventListener('click', function () {
+            var input = document.querySelector('[name="' + provider + '_model"]');
+            input.value = r.model; input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+          var info = document.createElement('span');
+          info.className = 'muted small';
+          info.textContent = r.ok ? (r.ms + ' ms') : ((r.hint || r.error || '').slice(0, 220));
+          row.appendChild(b); row.appendChild(info);
+          list.appendChild(row);
+        });
+        box.style.display = 'block';
+      } catch (e) {
+        showResult('Erreur réseau : ' + e.message, false);
+      } finally { btn.disabled = false; }
     });
   });
 })();

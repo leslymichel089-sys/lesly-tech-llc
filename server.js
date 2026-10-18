@@ -759,6 +759,15 @@ app.post('/admin/ai/credentials', requireLogin, (req, res) => {
   res.render('admin/ai', { page: 'admin', ...aiPageData(), saved: true });
 });
 
+app.post('/admin/ai/test-models', requireLogin, async (req, res) => {
+  const provider = ai.PROVIDERS.some((p) => p.id === req.body.provider) ? req.body.provider : 'deepseek';
+  try {
+    res.json({ provider, ...(await ai.testModels(provider, req.body)) });
+  } catch (e) {
+    res.json({ provider, ok: false, error: e.message, results: [] });
+  }
+});
+
 app.post('/admin/ai/test', requireLogin, async (req, res) => {
   const provider = ai.PROVIDERS.some((p) => p.id === req.body.provider) ? req.body.provider : 'deepseek';
   try {
