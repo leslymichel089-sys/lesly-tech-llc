@@ -616,3 +616,32 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
 .site-notice[hidden] { display: none; }
 .site-notice p { margin: 0; flex: 1; line-height: 1.45; }
 @media (max-width: 640px) { .site-notice { bottom: 76px; flex-direction: column; align-items: stretch; } }
+
+.promo-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 16px; }
+
+/* Promotions : bandeau, badges, encadré, fenêtre d'offre */
+.promo-bar { background: linear-gradient(135deg, #b3372a, #e8932f); color: #fff; font-size: .88rem; }
+.promo-bar-inner { display: flex; align-items: center; gap: 12px; padding-top: 8px; padding-bottom: 8px; flex-wrap: wrap; }
+.promo-bar-tag { background: rgba(255, 255, 255, .22); border-radius: 999px; padding: .15em .7em; font-weight: 800; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+.promo-bar-link { margin-left: auto; color: #fff; font-weight: 800; text-decoration: underline; }
+.tag-promo { background: #b3372a; color: #fff; border: 0; }
+.promo-box { margin: 12px 0; padding: .8em 1em; border-radius: var(--radius-s); background: color-mix(in srgb, #b3372a 10%, var(--surface));
+  border: 1.5px dashed #b3372a; color: var(--ink); line-height: 1.55; }
+.promo-code { font-family: ui-monospace, Consolas, monospace; letter-spacing: .05em; }
+.lead-modal { position: fixed; inset: 0; z-index: 131; background: rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.lead-modal[hidden] { display: none; }
+.lead-box { position: relative; width: min(420px, 100%); background: var(--surface); border-radius: 22px; padding: 28px 24px 20px; text-align: center; box-shadow: 0 30px 70px rgba(0, 0, 0, .35); }
+.lead-box h2 { margin: 0 0 8px; }
+.lead-box input[type=email] { width: 100%; font: inherit; padding: .75em 1em; border-radius: 999px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); margin: 8px 0 4px; }
+.lead-err { color: #b3372a; font-size: .85rem; margin: 4px 0 8px; }
+.lead-code { font-size: 1.3rem; font-weight: 800; color: #b3372a; font-family: ui-monospace, Consolas, monospace; }
+.chat-offer { width: auto; padding: 0 10px; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+@media (max-width: 640px) { .promo-bar-link { margin-left: 0; } }
+.chat-offer + .chat-head-btn { margin-left: 4px; }
+
+/* En-tête mobile : les outils passent à la ligne au lieu de déborder */
+@media (max-width: 600px) {
+  .header-tools { flex-shrink: 1; min-width: 0; flex-wrap: wrap; row-gap: 8px; justify-content: flex-start; }
+  .header-tools .tool { min-width: 0; }
+  .header-tools .theme-select { max-width: 130px; min-width: 0; }
+}

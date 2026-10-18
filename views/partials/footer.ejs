@@ -56,6 +56,7 @@
     <div class="chat-head">
       <img src="/img/levent-logo.jpg" alt="" width="36" height="36">
       <div><strong><%= t('chat_title') %></strong><br><span><%= t('chat_sub') %></span></div>
+      <% if (locals.sitePromo && locals.leadPopup !== undefined) { %><button type="button" class="chat-head-btn chat-offer" data-lead-open title="<%= t('chat_offer') %>"><%= t('chat_offer') %></button><% } %>
       <button type="button" class="chat-head-btn" id="chat-copy-all" title="<%= t('chat_copy_all') %>" aria-label="<%= t('chat_copy_all') %>">⧉</button>
       <button type="button" class="chat-close" id="chat-close" aria-label="Fermer">✕</button>
     </div>
@@ -95,6 +96,31 @@
 <div class="site-notice" id="site-notice" role="region" aria-label="Information" hidden>
   <p><%= t('notice_text') %> <a href="/confidentialite"><%= t('notice_more') %></a></p>
   <button type="button" class="btn btn-small" id="site-notice-ok"><%= t('notice_ok') %></button>
+</div>
+<% } %>
+<% if (locals.sitePromo && !String(currentPath).startsWith('/admin')) { %>
+<div class="lead-modal" id="lead-modal" hidden data-csrf="<%= csrfToken %>" data-auto="<%= locals.leadPopup ? '1' : '0' %>" data-delay="<%= locals.leadPopupDelay || 20 %>" data-promo="<%= locals.sitePromo.id %>">
+  <div class="lead-box" role="dialog" aria-modal="true" aria-labelledby="lead-title">
+    <button type="button" class="auth-x" data-lead-close aria-label="Fermer">✕</button>
+    <h2 id="lead-title"><%= t('lead_title') %></h2>
+    <div id="lead-form-wrap">
+      <p><%= t('lead_text').replace('{label}', promoLabel(locals.sitePromo)) %></p>
+      <form id="lead-form" novalidate>
+        <input type="email" id="lead-email" required autocomplete="email" placeholder="<%= t('lead_email') %>" aria-label="<%= t('lead_email') %>">
+        <label class="check-row auth-consent"><input type="checkbox" id="lead-consent"> <span><%= t('lead_consent') %></span></label>
+        <p class="lead-err" id="lead-err" hidden><%= t('lead_err') %></p>
+        <button type="submit" class="btn" style="width:100%"><%= t('lead_submit') %></button>
+      </form>
+      <button type="button" class="btn btn-ghost auth-anon" data-lead-close><%= t('lead_no') %></button>
+      <p class="muted small"><a href="/confidentialite"><%= t('auth_privacy') %></a></p>
+    </div>
+    <div id="lead-done" hidden>
+      <p><%= t('lead_ok') %></p>
+      <p class="lead-code" id="lead-code"></p>
+      <p class="muted small" id="lead-mail" hidden><%= t('lead_ok_mail') %></p>
+      <a class="btn" href="/ebooks" style="width:100%"><%= t('promo_see') %> →</a>
+    </div>
+  </div>
 </div>
 <% } %>
 <script src="/js/main.js"></script>

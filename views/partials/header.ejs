@@ -92,4 +92,13 @@ try { var _th = localStorage.getItem('ltl-theme'); if (_th) document.documentEle
   </div>
 </header>
 
+<% if (locals.sitePromo) { var sp = locals.sitePromo; %>
+<div class="promo-bar" role="note">
+  <div class="wrap promo-bar-inner">
+    <span class="promo-bar-tag"><%= t('promo_badge') %></span>
+    <span><strong><%= sp.title %></strong> — <%= promoLabel(sp) %> <%= t('promo_on') %> <%= sp.product_ids.length ? sp.product_ids.length + ' ebook(s)' : t('promo_all_ebooks') %><% if (promoCodes(sp)) { %> · <%= t('promo_code') %> <strong><%= promoCodes(sp) %></strong><% } %><% if (sp.ends_at) { %> · <%= t('promo_until') %> <%= promoEnd(sp, lang) %><% } %></span>
+    <a href="/ebooks" class="promo-bar-link"><%= t('promo_see') %> →</a>
+  </div>
+</div>
+<% } %>
 <main class="wrap">

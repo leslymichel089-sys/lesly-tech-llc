@@ -173,6 +173,10 @@
     {
       "h": "Idantifikasyon vizitè yo ak istwa",
       "p": "Depi premye vizit ou, sit la mete pwòp cookie teknik li (« ltl_vid », valab 1 an) ki gen yon idantifyan o aza, san non w. Li sèvi pou rekonèt aparèy ou lè w retounen epi pou kenbe istwa vizit ou yo (paj ou gade, dat, kote w soti, kalite aparèy, peyi apeprè ak adrès IP) ansanm ak konvèsasyon w ak asistan an, pou nou ka konseye w menm jan de yon vizit a lòt epi pou sekirite sit la. Nou pa vann done sa yo ni pataje yo pou piblisite. Pwofil ki pa aktif depi 13 mwa efase otomatikman. Ou ka efase cookie sa a nan navigatè w nenpòt ki lè, oswa mande nou efase istwa w nan paj Kontak la."
+    },
+    {
+      "h": "Òf ak kòd pwomosyon pa imèl",
+      "p": "Si w kite adrès imèl ou pou resevwa yon òf (epi w koche bwat dakò a), nou sèvi avè l pou voye kòd pwomosyon an ba ou, epi, pa plis pase yon fwa pa semèn, òf ak nouvèl ki gen rapò ak liv ou te gade yo. Chak imèl gen yon lyen pou w dezabòne an yon klik ; nou pa janm vann ni bay adrès ou. Kòd pwomosyon yo sèvi sou platfòm vant yo (Payhip, Gumroad, Shopify) dapre kondisyon pa yo."
     }
   ],
   "privacy_title": "Politik konfidansyalite",
@@ -328,5 +332,21 @@
   "auth_privacy": "Nou resevwa sèlman non w, imèl ou ak foto Google ou. Gade politik konfidansyalite a.",
   "notice_text": "Sit sa a sèvi ak yon cookie pou l rekonèt aparèy ou epi kenbe istwa vizit ou yo ak konvèsasyon w ak asistan an, pou n ka konseye w pi byen.",
   "notice_more": "Aprann plis",
-  "notice_ok": "Dakò"
+  "notice_ok": "Dakò",
+  "promo_badge": "Pwomo",
+  "promo_code": "kòd",
+  "promo_until": "jiska",
+  "promo_on": "sou",
+  "promo_all_ebooks": "tout ebook yo",
+  "promo_see": "Pwofite",
+  "lead_title": "🎁 Òf espesyal",
+  "lead_text": "Resevwa {label} sou pwochen ebook ou : kite imèl ou epi n ap ba w kòd la touswit.",
+  "lead_email": "Adrès imèl ou",
+  "lead_consent": "Mwen dakò resevwa òf ak nouvèl Les Éditions LeVent pa imèl (dezabòne an yon klik).",
+  "lead_submit": "Resevwa kòd mwen",
+  "lead_no": "Non mèsi",
+  "lead_ok": "Se fèt ! Men kòd ou :",
+  "lead_ok_mail": "Nou voye l ba ou pa imèl tou.",
+  "lead_err": "Verifye imèl ou epi koche bwat dakò a.",
+  "chat_offer": "🎁 Òf"
 }

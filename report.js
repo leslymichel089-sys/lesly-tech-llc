@@ -54,6 +54,7 @@ function collect() {
     system: monitor.snapshot(),
     siteEnabled: dbm.getSetting('site_enabled') !== '0',
     accounts: require('./accounts').dailyStats(),
+    promo: require('./promo').dailyStats(),
     guests: {
       unique: q(`SELECT COUNT(*) n FROM guests WHERE last_seen > ${day}`).n,
       fresh: q(`SELECT COUNT(*) n FROM guests WHERE first_seen > ${day}`).n,
@@ -111,6 +112,7 @@ async function build() {
     `Visites (24 h) : ${d.visits}${trend != null ? ` (${trend >= 0 ? '+' : ''}${trend} % vs veille)` : ''}`,
     `Visiteurs uniques : ${d.guests.unique} (${d.guests.fresh} nouveaux, ${d.guests.returning} revenus) · ${d.guests.sessions} visite(s)`,
     `Clics vers les boutiques : ${d.clicks}`,
+    `Promotions en cours : ${d.promo.live.length ? d.promo.live.join(' ; ') : 'aucune'} · E-mails promo envoyés : ${d.promo.sent} · Nouveaux contacts : ${d.promo.newContacts} (total ${d.promo.contacts}) · Ventes avec code : ${d.promo.couponSales}`,
     `Ventes : ${d.salesCount} — ${d.salesTotal.toFixed(2)} $${d.refunds ? ` (${d.refunds} remboursement(s))` : ''}`,
     `Messages de contact : ${d.contacts.length} · Nouveaux abonnés : ${d.subscribers}`,
     `Conversations avec l'assistant IA : ${d.chats}`,
@@ -137,6 +139,8 @@ async function build() {
       ${row('Visites (24 h)', `${d.visits}${trend != null ? ` <span style="color:${trend >= 0 ? '#1e7a4c' : '#b3372a'}">(${trend >= 0 ? '+' : ''}${trend} %)</span>` : ''}`)}
       ${row('Visiteurs uniques', `${d.guests.unique} — ${d.guests.fresh} nouveaux, ${d.guests.returning} revenus (${d.guests.sessions} visites)`)}
       ${row('Clics vers les boutiques', d.clicks)}
+      ${row('Promotions en cours', d.promo.live.length ? esc(d.promo.live.join(' ; ')) : 'aucune')}
+      ${row('E-mails promo envoyés', `${d.promo.sent} · nouveaux contacts ${d.promo.newContacts} (total ${d.promo.contacts}) · ventes avec code ${d.promo.couponSales}`)}
       ${row('Ventes', `${d.salesCount} — ${d.salesTotal.toFixed(2)} $${d.refunds ? ` · ${d.refunds} remboursement(s)` : ''}`)}
       ${row('Messages de contact', d.contacts.length)}
       ${row('Nouveaux abonnés newsletter', d.subscribers)}

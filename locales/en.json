@@ -173,6 +173,10 @@
     {
       "h": "Visitor identification and history",
       "p": "From your first visit, the site sets its own technical cookie (\"ltl_vid\", valid for 1 year) containing a random identifier, without your name. It is used to recognize your device on later visits and to keep a history of your visits (pages viewed, date, referrer, device type, approximate country and IP address) and of your chats with the assistant, so we can advise you consistently from one visit to the next and keep the site secure. This data is neither sold nor shared for advertising. Profiles inactive for 13 months are deleted automatically. You can clear this cookie in your browser at any time, or ask us to delete your history via the Contact page."
+    },
+    {
+      "h": "Offers and promo codes by e-mail",
+      "p": "If you leave your e-mail address to receive an offer (and tick the consent box), we use it to send you the promo code and then, at most once a week, offers and news related to the books you viewed. Every e-mail includes a one-click unsubscribe link; your address is never sold or shared. Promo codes are used on the sales platforms (Payhip, Gumroad, Shopify) under their terms."
     }
   ],
   "privacy_title": "Privacy policy",
@@ -328,5 +332,21 @@
   "auth_privacy": "We only receive your Google name, e-mail and photo. See our privacy policy.",
   "notice_text": "This site uses a cookie to recognize your device and keep a history of your visits and your chats with the assistant, so we can help you better.",
   "notice_more": "Learn more",
-  "notice_ok": "OK, got it"
+  "notice_ok": "OK, got it",
+  "promo_badge": "Deal",
+  "promo_code": "code",
+  "promo_until": "until",
+  "promo_on": "on",
+  "promo_all_ebooks": "all ebooks",
+  "promo_see": "Get the deal",
+  "lead_title": "🎁 Special offer",
+  "lead_text": "Get {label} on your next ebook: leave your e-mail and we’ll give you the code right away.",
+  "lead_email": "Your e-mail address",
+  "lead_consent": "I agree to receive offers and news from Les Éditions LeVent by e-mail (one-click unsubscribe).",
+  "lead_submit": "Get my code",
+  "lead_no": "No thanks",
+  "lead_ok": "Done! Here is your code:",
+  "lead_ok_mail": "We also sent it to you by e-mail.",
+  "lead_err": "Check your e-mail and tick the consent box.",
+  "chat_offer": "🎁 Offer"
 }

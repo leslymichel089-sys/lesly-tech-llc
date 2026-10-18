@@ -113,6 +113,8 @@ async function sendRelance(v, siteUrl) {
 async function runRelances(siteUrl) {
   const s = settings();
   if (!s.relanceEnabled || !s.emailReady) return { sent: 0, skipped: true };
+  // Les relances avec promotion (promo.js) remplacent les relances simples quand elles sont actives.
+  if (dbm.getSetting('promo_auto') === '1') return { sent: 0, skipped: true };
   let sent = 0;
   for (const v of candidates()) {
     try { await sendRelance(v, siteUrl); sent++; } catch (e) { dbm.logError(`relance #${v.id} : ${e.message}`); }

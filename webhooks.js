@@ -71,6 +71,7 @@ async function record(sale) {
     `Montant : ${money(sale.amount, sale.currency)}`,
     `Plateforme : ${platform}`,
     sale.buyer ? `Client : ${sale.buyer}` : '',
+    sale.coupon ? `Code promo utilisé : ${sale.coupon}` : '',
   ].filter(Boolean);
   watchdog.fire('sale', `${label} — ${sale.product || platform}`, lines.join('\n'),
     { short: `${label} : ${sale.product || ''} — ${money(sale.amount, sale.currency)} (${platform})` }).catch(() => {});
@@ -86,6 +87,7 @@ function fromPayhip(b) {
     product: items.map((i) => i.product_name).filter(Boolean).join(', ') || String(b.product_name || ''),
     amount: Number(b.price || b.amount || 0), currency: String(b.currency || 'USD').toUpperCase(),
     buyer: String(b.email || ''),
+    coupon: String(b.coupon_code || b.coupon || (items[0] && (items[0].coupon_code || items[0].coupon)) || '').toUpperCase(),
   };
 }
 
@@ -98,6 +100,7 @@ function fromGumroad(b) {
     product: String(b.product_name || ''),
     amount: Number(b.price || 0) / 100, currency: String(b.currency || 'usd').toUpperCase(),
     buyer: String(b.email || ''),
+    coupon: String(b.offer_code || '').toUpperCase(),
   };
 }
 
@@ -108,6 +111,7 @@ function fromShopify(b) {
     product: items.map((i) => (i.quantity > 1 ? `${i.quantity}× ` : '') + i.title).join(', '),
     amount: Number(b.total_price || 0), currency: String(b.currency || 'USD').toUpperCase(),
     buyer: String(b.email || (b.customer && b.customer.email) || ''),
+    coupon: (Array.isArray(b.discount_codes) ? b.discount_codes.map((d) => d.code) : []).join(', ').toUpperCase(),
   };
 }
 

@@ -21,6 +21,7 @@ const report = require('./report');
 const assistant = require('./assistant');
 const accounts = require('./accounts');
 const tracker = require('./tracker');
+const promo = require('./promo');
 
 // Les couvertures sont versionnées en base64 (*.jpg.b64) car certains modes de
 // déploiement ne transportent pas le binaire. On les restaure en .jpg au démarrage.
@@ -205,6 +206,8 @@ app.use((req, res, next) => {
 accounts.register(app, { requireLogin, siteUrl: SITE_URL });
 // Identification de chaque visiteur (cookie ltl_vid) + sessions de visite.
 tracker.register(app, { siteUrl: SITE_URL });
+// Promotions du moment, collecte d'e-mails avec accord et relances automatiques avec rabais.
+promo.register(app, { requireLogin, siteUrl: SITE_URL });
 
 // ---------- Page de maintenance (site désactivé ; l'admin reste accessible) ----------
 app.use((req, res, next) => {

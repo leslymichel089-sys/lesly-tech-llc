@@ -170,6 +170,48 @@ for (const t of ['visits', 'clicks', 'chat_messages']) {
   if (!cols.includes('vid')) db.exec(`ALTER TABLE ${t} ADD COLUMN vid TEXT DEFAULT NULL`);
   if (!cols.includes('session_id')) db.exec(`ALTER TABLE ${t} ADD COLUMN session_id INTEGER DEFAULT NULL`);
 }
+// Promotions (politique commerciale du moment) et liste de contacts e-mail avec accord.
+db.exec(`
+CREATE TABLE IF NOT EXISTS promotions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,                   -- ex. « Rentrée : −20 % sur les ebooks »
+  discount_type TEXT DEFAULT 'percent',  -- percent | amount
+  discount_value REAL DEFAULT 0,
+  codes TEXT DEFAULT '{}',               -- JSON { payhip: 'CODE', gumroad: 'CODE', shopify: 'CODE', amazon: 'note' }
+  product_ids TEXT DEFAULT '[]',         -- JSON [ids] ; vide = tous les ebooks
+  audience TEXT DEFAULT 'all',           -- all | new | returning | buyers
+  starts_at TEXT DEFAULT (date('now')),
+  ends_at TEXT DEFAULT NULL,             -- date incluse ; NULL = sans fin
+  active INTEGER DEFAULT 1,
+  show_on_site INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  name TEXT DEFAULT '',
+  lang TEXT DEFAULT 'fr',
+  source TEXT DEFAULT '',                -- popup | chat | google | newsletter | client
+  consent INTEGER DEFAULT 1,             -- 1 = accepte les e-mails ; 0 = désinscrit
+  consent_at TEXT DEFAULT (datetime('now')),
+  unsub_token TEXT DEFAULT '',
+  vid TEXT DEFAULT NULL,                 -- identifiant visiteur (cookie) pour personnaliser
+  visitor_id INTEGER DEFAULT NULL,       -- compte Google éventuel
+  emails_sent INTEGER DEFAULT 0,
+  last_email_at TEXT DEFAULT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS promo_sends (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contact_id INTEGER, promo_id INTEGER, product_id INTEGER,
+  subject TEXT DEFAULT '', provider TEXT DEFAULT '',
+  at TEXT DEFAULT (datetime('now'))
+);
+`);
+if (!db.prepare('PRAGMA table_info(sales)').all().some((c) => c.name === 'coupon')) {
+  db.exec("ALTER TABLE sales ADD COLUMN coupon TEXT DEFAULT ''");
+}
+
 db.exec('CREATE INDEX IF NOT EXISTS idx_visits_vid ON visits (vid, id)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_chat_vid ON chat_messages (vid, id)');
 
@@ -593,8 +635,8 @@ const countContactMessages = () => db.prepare('SELECT COUNT(*) AS n FROM contact
 // Retourne true si la vente est nouvelle (false si déjà reçue : les plateformes renvoient parfois).
 const addSale = (s) => {
   try {
-    db.prepare(`INSERT INTO sales (platform, external_id, product, amount, currency, buyer, kind)
-      VALUES (@platform, @external_id, @product, @amount, @currency, @buyer, @kind)`).run(s);
+    db.prepare(`INSERT INTO sales (platform, external_id, product, amount, currency, buyer, kind, coupon)
+      VALUES (@platform, @external_id, @product, @amount, @currency, @buyer, @kind, @coupon)`).run({ coupon: '', ...s });
     return true;
   } catch (e) { return false; }
 };

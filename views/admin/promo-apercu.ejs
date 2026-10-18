@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Aperçu — rien n'est envoyé</span>
+  <h1>« <%= mail.subject %> »</h1>
+  <p class="muted">Pour : <strong><%= c.email %></strong> (<%= c.lang %>) · Promotion : <strong><%= offer.promo.title %></strong> ·
+    Livre : <strong><%= offer.product.title %></strong> (<%= offer.reason === 'consulté' ? 'consulté par ce contact' : 'choisi dans la promotion' %>) ·
+    Rédigé par : <%= mail.provider %> · Lien d'achat : <a href="<%= mail.url %>" target="_blank"><%= mail.url %></a></p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin/promotions">← Promotions</a>
+    <a class="btn btn-small btn-ghost" href="">Rédiger une autre version</a>
+    <% ['fr', 'en', 'ht', 'es'].forEach(function (l) { %>
+      <% if (!c.id) { %><a class="btn btn-small btn-ghost" href="/admin/promotions/apercu?lang=<%= l %>"><%= l.toUpperCase() %></a><% } %>
+    <% }) %>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <div class="report-preview"><%- mail.html %></div>
+</section>
+
+<%- include('../partials/footer') %>

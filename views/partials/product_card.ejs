@@ -23,6 +23,7 @@ var isVideo = p.type === 'video';
   <div class="card-body">
     <div class="card-tags">
       <span class="tag tag-type"><%= t(typeKey) %></span>
+      <% var cardPromo = locals.promoFor ? promoFor(p.id) : null; %><% if (cardPromo) { %><span class="tag tag-promo"><%= promoLabel(cardPromo) %></span><% } %>
       <% if (p.version) { %><span class="tag"><%= t('badge_version') %> <%= p.version %></span><% } %>
       <% if (p.update_available) { %><span class="tag tag-update"><%= t('badge_update') %></span><% } %>
       <% if (!p.active) { %><span class="tag tag-off"><%= t('badge_inactive') %></span><% } %>

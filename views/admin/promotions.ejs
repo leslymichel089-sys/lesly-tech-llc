@@ -1,0 +1,178 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Admin</span>
+  <h1>Promotions & relances</h1>
+  <p class="muted">Définis ici ta politique commerciale du moment. Le site l'affiche aux visiteurs, l'assistant la connaît,
+    et les relances e-mail automatiques l'utilisent — <strong>l'IA n'invente jamais d'autre rabais</strong>.
+    Les codes doivent d'abord exister sur les plateformes (coupon Payhip, « offer code » Gumroad, code de réduction Shopify).</p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin">Tableau de bord</a>
+    <a class="btn btn-small btn-ghost" href="/admin/promotions/apercu">Aperçu d'un e-mail</a>
+    <form method="post" action="/admin/promotions/run" class="inline-form" onsubmit="return confirm('Envoyer maintenant les relances avec la promotion en cours aux contacts éligibles ?')">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-small" type="submit">Envoyer maintenant (<%= stats.pending %> éligible(s))</button>
+    </form>
+  </div>
+</section>
+
+<% if (msg) { %><p class="alert alert-ok"><%= msg %></p><% } %>
+<% if (!settings.emailReady) { %><p class="alert alert-error">Resend n'est pas configuré : aucun e-mail ne peut partir. Configure-le dans <a href="/admin/notifications">Notifications</a> (domaine d'envoi vérifié).</p><% } %>
+
+<section class="dash-panel">
+  <div class="stats-grid">
+    <div class="stat"><span class="stat-num"><%= promos.filter(function (p) { return p.live; }).length %></span><span class="stat-label">promo(s) en cours</span></div>
+    <div class="stat"><span class="stat-num"><%= stats.consenting %></span><span class="stat-label">contacts avec accord</span></div>
+    <div class="stat"><span class="stat-num"><%= stats.pending %></span><span class="stat-label">à relancer maintenant</span></div>
+    <div class="stat"><span class="stat-num"><%= stats.sentWeek %></span><span class="stat-label">e-mails envoyés (7 j)</span></div>
+  </div>
+</section>
+
+<section class="dash-panel">
+  <h2><%= edit ? 'Modifier la promotion' : 'Nouvelle promotion' %></h2>
+  <% var e = edit || { title: '', discount_type: 'percent', discount_value: '', codes: {}, product_ids: [], audience: 'all', starts_at: new Date().toISOString().slice(0, 10), ends_at: '', active: true, show_on_site: true }; %>
+  <form method="post" action="/admin/promotions/save" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% if (edit) { %><input type="hidden" name="id" value="<%= edit.id %>"><% } %>
+    <label>Nom de la promotion
+      <input type="text" name="title" required maxlength="120" value="<%= e.title %>" placeholder="Ex. Rentrée : −20 % sur tous les ebooks"></label>
+    <div class="form-row">
+      <label>Type de réduction
+        <select name="discount_type">
+          <option value="percent" <%= e.discount_type === 'percent' ? 'selected' : '' %>>Pourcentage (%)</option>
+          <option value="amount" <%= e.discount_type === 'amount' ? 'selected' : '' %>>Montant ($)</option>
+        </select></label>
+      <label>Valeur
+        <input type="number" name="discount_value" min="0" step="0.01" required value="<%= e.discount_value %>" placeholder="20"></label>
+      <label>Public visé
+        <select name="audience">
+          <% [['all', 'Tout le monde'], ['new', 'Nouveaux contacts (moins de 14 jours)'], ['returning', 'Visiteurs revenus'], ['buyers', 'Clients ayant déjà acheté']].forEach(function (o) { %>
+            <option value="<%= o[0] %>" <%= e.audience === o[0] ? 'selected' : '' %>><%= o[1] %></option>
+          <% }) %>
+        </select></label>
+    </div>
+    <div class="form-row">
+      <label>Début <input type="date" name="starts_at" value="<%= e.starts_at || '' %>"></label>
+      <label>Fin (incluse) <input type="date" name="ends_at" value="<%= e.ends_at || '' %>"></label>
+    </div>
+    <p class="muted small" style="margin:0">Codes promo par plateforme (laisse vide si la plateforme n'est pas concernée) :</p>
+    <div class="form-row">
+      <label>Payhip <input type="text" name="code_payhip" value="<%= e.codes.payhip || '' %>" placeholder="LEVENT20"></label>
+      <label>Gumroad <input type="text" name="code_gumroad" value="<%= e.codes.gumroad || '' %>" placeholder="LEVENT20"></label>
+      <label>Shopify <input type="text" name="code_shopify" value="<%= e.codes.shopify || '' %>" placeholder="LEVENT20"></label>
+      <label>Amazon (texte libre) <input type="text" name="code_amazon" value="<%= e.codes.amazon || '' %>" placeholder="Kindle Countdown Deal"></label>
+    </div>
+    <fieldset class="cred-group">
+      <legend>Livres concernés <span class="muted small">(rien de coché = tous les ebooks)</span></legend>
+      <div class="promo-products">
+        <% products.forEach(function (p) { %>
+          <label class="check-row small"><input type="checkbox" name="product_ids" value="<%= p.id %>" <%= e.product_ids.indexOf(p.id) >= 0 ? 'checked' : '' %>> <%= p.title %> <span class="muted">(<%= p.type %>)</span></label>
+        <% }) %>
+      </div>
+    </fieldset>
+    <div class="form-row">
+      <label class="check-row"><input type="checkbox" name="active" <%= e.active ? 'checked' : '' %>> Promotion active</label>
+      <label class="check-row"><input type="checkbox" name="show_on_site" <%= e.show_on_site ? 'checked' : '' %>> Afficher sur le site (bandeau + badges)</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Enregistrer la promotion</button>
+      <% if (edit) { %><a class="btn btn-ghost" href="/admin/promotions">Annuler</a><% } %>
+    </div>
+  </form>
+</section>
+
+<section class="dash-panel">
+  <h2>Promotions</h2>
+  <% if (!promos.length) { %><p class="muted">Aucune promotion pour l'instant.</p><% } else { %>
+    <div class="table-wrap"><table class="admin-table">
+      <thead><tr><th>Promotion</th><th>Réduction</th><th>Codes</th><th>Période</th><th>Public</th><th>État</th><th></th></tr></thead>
+      <tbody>
+        <% promos.forEach(function (p) { %>
+          <tr class="<%= p.live ? '' : 'row-off' %>">
+            <td><strong><%= p.title %></strong><br><span class="muted small"><%= p.product_ids.length ? p.product_ids.length + ' livre(s)' : 'tous les ebooks' %><%= p.show_on_site ? ' · affichée sur le site' : '' %></span></td>
+            <td><%= p.label %></td>
+            <td class="small"><%= p.codesText || '—' %></td>
+            <td class="small nowrap"><%= p.starts_at %> → <%= p.ends_at || 'sans fin' %></td>
+            <td class="small"><%= { all: 'tous', new: 'nouveaux', returning: 'revenus', buyers: 'clients' }[p.audience] %></td>
+            <td><span class="tag <%= p.live ? 'tag-update' : 'tag-off' %>"><%= p.live ? 'en cours' : (p.active ? 'hors dates' : 'désactivée') %></span></td>
+            <td class="row-actions">
+              <a class="btn btn-small btn-ghost" href="/admin/promotions?edit=<%= p.id %>">Modifier</a>
+              <form method="post" action="/admin/promotions/<%= p.id %>/toggle" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-small btn-ghost" type="submit"><%= p.active ? 'Désactiver' : 'Activer' %></button></form>
+              <form method="post" action="/admin/promotions/<%= p.id %>/delete" class="inline-form" onsubmit="return confirm('Supprimer cette promotion ?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-small btn-danger" type="submit">Supprimer</button></form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<section class="dash-panel">
+  <h2>Relances automatiques</h2>
+  <form method="post" action="/admin/promotions/settings" class="form form-wide">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label class="check-row"><input type="checkbox" name="promo_auto" <%= settings.auto ? 'checked' : '' %>> <strong>Envoyer automatiquement</strong> la promotion en cours aux contacts éligibles (vérification toutes les heures)</label>
+    <div class="form-row">
+      <label>Au plus 1 e-mail par contact tous les (jours)
+        <input type="number" name="promo_min_days" min="3" max="60" value="<%= settings.minDays %>"></label>
+      <label>Plafond d'e-mails par 24 h
+        <input type="number" name="promo_daily_cap" min="1" max="1000" value="<%= settings.dailyCap %>"></label>
+    </div>
+    <label class="check-row"><input type="checkbox" name="promo_include_clients" <%= settings.includeClients ? 'checked' : '' %>> Inclure les clients ayant acheté (e-mail reçu par les ventes Payhip/Gumroad/Shopify) — autorisé aux États-Unis avec lien de désinscription ; à éviter pour une clientèle européenne sans accord explicite</label>
+    <fieldset class="cred-group">
+      <legend>Fenêtre « Recevoir l'offre » sur le site</legend>
+      <label class="check-row"><input type="checkbox" name="promo_popup" <%= settings.popup ? 'checked' : '' %>> Proposer l'offre en cours aux visiteurs (une seule fois par visiteur, uniquement quand une promo est affichée sur le site)</label>
+      <label>Délai avant l'affichage (secondes)
+        <input type="number" name="promo_popup_delay" min="5" max="300" value="<%= settings.popupDelay %>" style="max-width:160px"></label>
+    </fieldset>
+    <p class="muted small">Garde-fous : accord obligatoire, lien de désinscription dans chaque e-mail, jamais de promo sur un livre déjà acheté,
+      le livre proposé est celui que le contact a consulté (sinon le plus pertinent de la promo). Quand les envois automatiques sont activés,
+      ils remplacent les relances simples de la page Visiteurs.<% if (lastRun) { %> Dernier passage : <%= lastRun %>.<% } %></p>
+    <div><button class="btn" type="submit">Enregistrer les réglages</button></div>
+  </form>
+</section>
+
+<% if (salesWithCode.length) { %>
+<section class="dash-panel">
+  <h2>Ventes avec code promo</h2>
+  <ul class="mini-list">
+    <% salesWithCode.forEach(function (s) { %><li><strong><%= s.coupon %></strong> — <%= s.n %> vente(s), <%= Number(s.total || 0).toFixed(2) %> $</li><% }) %>
+  </ul>
+</section>
+<% } %>
+
+<section class="dash-panel">
+  <h2>Derniers e-mails envoyés</h2>
+  <% if (!sends.length) { %><p class="muted">Aucun e-mail promotionnel envoyé pour l'instant.</p><% } else { %>
+    <div class="table-wrap"><table class="admin-table">
+      <thead><tr><th>Date (UTC)</th><th>Contact</th><th>Promotion</th><th>Livre</th><th>Objet</th></tr></thead>
+      <tbody><% sends.forEach(function (s) { %>
+        <tr><td class="small nowrap"><%= s.at %></td><td class="small"><%= s.email %></td><td class="small"><%= s.promo_title %></td><td class="small"><%= s.product_title %></td><td class="small"><%= s.subject %></td></tr>
+      <% }) %></tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<section class="dash-panel">
+  <h2>Contacts (<%= stats.contacts %>)</h2>
+  <div class="dash-actions" style="margin-bottom:10px"><a class="btn btn-small btn-ghost" href="/admin/promotions/contacts.csv">Exporter en CSV</a></div>
+  <% if (!contacts.length) { %><p class="muted">Aucun contact pour l'instant : ils arrivent par la fenêtre « Recevoir l'offre », la connexion Google (avec accord) et la newsletter.</p><% } else { %>
+    <div class="table-wrap"><table class="admin-table">
+      <thead><tr><th>E-mail</th><th>Source</th><th>Langue</th><th>Accord</th><th>Inscrit le</th><th>E-mails</th><th></th></tr></thead>
+      <tbody><% contacts.forEach(function (c) { %>
+        <tr class="<%= c.consent ? '' : 'row-off' %>">
+          <td><%= c.email %><% if (c.name) { %><br><span class="muted small"><%= c.name %></span><% } %></td>
+          <td class="small"><%= c.source %></td><td class="small"><%= c.lang %></td>
+          <td><span class="tag <%= c.consent ? 'tag-update' : 'tag-off' %>"><%= c.consent ? 'oui' : 'désinscrit' %></span></td>
+          <td class="small nowrap"><%= c.created_at %></td><td><%= c.emails_sent %></td>
+          <td class="row-actions">
+            <a class="btn btn-small btn-ghost" href="/admin/promotions/apercu?contact=<%= c.id %>">Aperçu</a>
+            <% if (c.vid) { %><a class="btn btn-small btn-ghost" href="/admin/profil/<%= c.vid %>">Historique</a><% } %>
+          </td>
+        </tr>
+      <% }) %></tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

@@ -26,6 +26,14 @@
     <p class="detail-desc"><%= descFor(product, lang) %></p>
     <% if (product.links && product.links.length) { %>
       <h2 class="links-title"><%= t('product_links_title') %></h2>
+      <% var pagePromo = locals.promoFor ? promoFor(product.id) : null; %>
+      <% if (pagePromo) { %>
+        <div class="promo-box" role="note">
+          <strong><%= promoLabel(pagePromo) %></strong> — <%= pagePromo.title %>
+          <% if (promoCodes(pagePromo)) { %><br><%= t('promo_code') %> : <strong class="promo-code"><%= promoCodes(pagePromo) %></strong><% } %>
+          <% if (pagePromo.ends_at) { %><br><span class="small"><%= t('promo_until') %> <%= promoEnd(pagePromo, lang) %></span><% } %>
+        </div>
+      <% } %>
       <% if (product.type === 'ebook') { %><p class="no-refund" role="note"><%= t('no_refund_note') %> <a href="/conditions"><%= t('nav_terms') %></a></p><% } %>
       <div class="links-list">
         <% product.links.forEach(function(l, i){ %>

@@ -404,6 +404,50 @@
     });
   });
 
+  // --- Fenêtre « Recevoir l'offre » (e-mail contre code promo, accord explicite obligatoire) ---
+  var lead = document.getElementById('lead-modal');
+  if (lead) {
+    var LEAD_KEY = 'ltl-lead-' + lead.getAttribute('data-promo');
+    function leadOpen() { lead.hidden = false; setTimeout(function () { document.getElementById('lead-email').focus(); }, 50); }
+    function leadClose() { lead.hidden = true; try { localStorage.setItem(LEAD_KEY, 'vu'); } catch (e) {} }
+    document.querySelectorAll('[data-lead-open]').forEach(function (b) { b.addEventListener('click', leadOpen); });
+    lead.querySelectorAll('[data-lead-close]').forEach(function (b) { b.addEventListener('click', leadClose); });
+    lead.addEventListener('click', function (e) { if (e.target === lead) leadClose(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lead.hidden) leadClose(); });
+    // Ouverture automatique : une seule fois par visiteur et par promotion, jamais par-dessus une autre fenêtre.
+    var leadSeen = null;
+    try { leadSeen = localStorage.getItem(LEAD_KEY); } catch (e) {}
+    if (lead.getAttribute('data-auto') === '1' && !leadSeen) {
+      setTimeout(function () {
+        var busy = document.querySelector('.auth-modal:not([hidden])') || (document.getElementById('chat-panel') && !document.getElementById('chat-panel').hidden);
+        if (!busy && lead.hidden) leadOpen();
+      }, (parseInt(lead.getAttribute('data-delay'), 10) || 20) * 1000);
+    }
+    document.getElementById('lead-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = document.getElementById('lead-email').value.trim();
+      var consent = document.getElementById('lead-consent').checked;
+      var err = document.getElementById('lead-err');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !consent) { err.hidden = false; return; }
+      err.hidden = true;
+      fetch('/api/lead', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, consent: true, source: lead.getAttribute('data-source') || 'popup', _csrf: lead.getAttribute('data-csrf') }),
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.ok) { err.hidden = false; return; }
+        document.getElementById('lead-form-wrap').hidden = true;
+        document.getElementById('lead-done').hidden = false;
+        document.getElementById('lead-code').textContent = d.promo ? (d.promo.label + (d.promo.codes ? ' — ' + d.promo.codes : '') + (d.promo.end ? ' (' + d.promo.end + ')' : '')) : '';
+        document.getElementById('lead-mail').hidden = !d.emailed;
+        try { localStorage.setItem(LEAD_KEY, 'inscrit'); } catch (e2) {}
+      }).catch(function () { err.hidden = false; });
+    });
+  }
+  // Le bouton 🎁 de la bulle indique la source « chat ».
+  document.querySelectorAll('.chat-offer').forEach(function (b) {
+    b.addEventListener('click', function () { if (lead) lead.setAttribute('data-source', 'chat'); });
+  });
+
   // --- Bandeau d'information (cookie d'identification) : affiché une seule fois ---
   var notice = document.getElementById('site-notice');
   if (notice) {

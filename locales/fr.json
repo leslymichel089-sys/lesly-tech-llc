@@ -173,6 +173,10 @@
     {
       "h": "Identification des visiteurs et historique",
       "p": "Dès ta première visite, le site dépose un cookie technique propre (« ltl_vid », valable 1 an) contenant un identifiant aléatoire, sans ton nom. Il sert à reconnaître ton appareil lors de tes visites suivantes et à conserver l'historique de tes visites (pages consultées, date, provenance, type d'appareil, pays approximatif et adresse IP) ainsi que de tes échanges avec l'assistant, afin de te conseiller de manière cohérente d'une visite à l'autre et d'assurer la sécurité du site. Ces données ne sont ni vendues ni partagées à des fins publicitaires. Les profils inactifs depuis 13 mois sont supprimés automatiquement. Tu peux effacer ce cookie dans ton navigateur à tout moment, ou demander la suppression de ton historique via la page Contact."
+    },
+    {
+      "h": "Offres et codes promo par e-mail",
+      "p": "Si tu laisses ton adresse e-mail pour recevoir une offre (et coches la case d'accord), nous l'utilisons pour t'envoyer le code promo, puis, au plus une fois par semaine, des offres et nouveautés en lien avec les livres que tu as consultés. Chaque e-mail contient un lien de désinscription en un clic ; ton adresse n'est jamais vendue ni cédée. Les codes promo s'utilisent sur les plateformes de vente (Payhip, Gumroad, Shopify) selon leurs conditions."
     }
   ],
   "privacy_title": "Politique de confidentialité",
@@ -335,5 +339,21 @@
   "auth_privacy": "Nous ne recevons que ton nom, ton e-mail et ta photo Google. Voir la politique de confidentialité.",
   "notice_text": "Ce site utilise un cookie pour reconnaître ton appareil et garder l'historique de tes visites et de tes échanges avec l'assistant, afin de mieux te conseiller.",
   "notice_more": "En savoir plus",
-  "notice_ok": "OK, compris"
+  "notice_ok": "OK, compris",
+  "promo_badge": "Promo",
+  "promo_code": "code",
+  "promo_until": "jusqu'au",
+  "promo_on": "sur",
+  "promo_all_ebooks": "tous les ebooks",
+  "promo_see": "En profiter",
+  "lead_title": "🎁 Offre spéciale",
+  "lead_text": "Reçois {label} sur ton prochain ebook : laisse ton e-mail et on te donne le code tout de suite.",
+  "lead_email": "Ton adresse e-mail",
+  "lead_consent": "J'accepte de recevoir par e-mail les offres et nouveautés des Éditions LeVent (désinscription en un clic).",
+  "lead_submit": "Recevoir mon code",
+  "lead_no": "Non merci",
+  "lead_ok": "C'est noté ! Voici ton code :",
+  "lead_ok_mail": "Nous te l’avons aussi envoyé par e-mail.",
+  "lead_err": "Vérifie ton e-mail et coche la case d'accord.",
+  "chat_offer": "🎁 Offre"
 }
