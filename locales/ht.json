@@ -169,6 +169,10 @@
     {
       "h": "Koneksyon Google ak imèl",
       "p": "Koneksyon ak Google pa obligatwa : tout sit la rete louvri san kont. Si w konekte, nou resevwa sèlman non w, adrès imèl ou ak foto pwofil Google ou. Answit nou mete ansanm ak kont ou paj ou gade yo, klik ou fè sou boutik yo ak kesyon ou poze asistan an, pou nou ka rekòmande w sa ki bon pou ou. Nou voye w imèl (nouvèl, konsèy, rapèl) sèlman si w te koche bwat dakò a ; chak imèl gen yon lyen pou w dezabòne an yon klik. Ou ka mande nou efase done w nenpòt ki lè nan paj Kontak la."
+    },
+    {
+      "h": "Idantifikasyon vizitè yo ak istwa",
+      "p": "Depi premye vizit ou, sit la mete pwòp cookie teknik li (« ltl_vid », valab 1 an) ki gen yon idantifyan o aza, san non w. Li sèvi pou rekonèt aparèy ou lè w retounen epi pou kenbe istwa vizit ou yo (paj ou gade, dat, kote w soti, kalite aparèy, peyi apeprè ak adrès IP) ansanm ak konvèsasyon w ak asistan an, pou nou ka konseye w menm jan de yon vizit a lòt epi pou sekirite sit la. Nou pa vann done sa yo ni pataje yo pou piblisite. Pwofil ki pa aktif depi 13 mwa efase otomatikman. Ou ka efase cookie sa a nan navigatè w nenpòt ki lè, oswa mande nou efase istwa w nan paj Kontak la."
     }
   ],
   "privacy_title": "Politik konfidansyalite",
@@ -321,5 +325,8 @@
   "auth_anonymous": "Kontinye san kont",
   "auth_hello": "Bonjou",
   "auth_error": "Koneksyon an pa mache. Eseye ankò oswa kontinye san kont.",
-  "auth_privacy": "Nou resevwa sèlman non w, imèl ou ak foto Google ou. Gade politik konfidansyalite a."
+  "auth_privacy": "Nou resevwa sèlman non w, imèl ou ak foto Google ou. Gade politik konfidansyalite a.",
+  "notice_text": "Sit sa a sèvi ak yon cookie pou l rekonèt aparèy ou epi kenbe istwa vizit ou yo ak konvèsasyon w ak asistan an, pou n ka konseye w pi byen.",
+  "notice_more": "Aprann plis",
+  "notice_ok": "Dakò"
 }

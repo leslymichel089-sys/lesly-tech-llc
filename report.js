@@ -54,6 +54,12 @@ function collect() {
     system: monitor.snapshot(),
     siteEnabled: dbm.getSetting('site_enabled') !== '0',
     accounts: require('./accounts').dailyStats(),
+    guests: {
+      unique: q(`SELECT COUNT(*) n FROM guests WHERE last_seen > ${day}`).n,
+      fresh: q(`SELECT COUNT(*) n FROM guests WHERE first_seen > ${day}`).n,
+      returning: q(`SELECT COUNT(*) n FROM guests WHERE last_seen > ${day} AND first_seen <= ${day}`).n,
+      sessions: q(`SELECT COUNT(*) n FROM guest_sessions WHERE started_at > ${day}`).n,
+    },
   };
 }
 
@@ -103,6 +109,7 @@ async function build() {
     `Rapport quotidien — ${dateFr}`, status, '',
     summary ? summary + '\n' : '',
     `Visites (24 h) : ${d.visits}${trend != null ? ` (${trend >= 0 ? '+' : ''}${trend} % vs veille)` : ''}`,
+    `Visiteurs uniques : ${d.guests.unique} (${d.guests.fresh} nouveaux, ${d.guests.returning} revenus) · ${d.guests.sessions} visite(s)`,
     `Clics vers les boutiques : ${d.clicks}`,
     `Ventes : ${d.salesCount} — ${d.salesTotal.toFixed(2)} $${d.refunds ? ` (${d.refunds} remboursement(s))` : ''}`,
     `Messages de contact : ${d.contacts.length} · Nouveaux abonnés : ${d.subscribers}`,
@@ -114,7 +121,7 @@ async function build() {
     `Système : en ligne depuis ${sys.uptimeHours} h${sys.disk ? `, disque ${sys.disk.usedPct} %` : ''}, mémoire ${sys.memoryMb} Mo.`,
   ].filter((l) => l !== '').join('\n');
 
-  const short = `${status}\nVisites ${d.visits} · Clics ${d.clicks} · Ventes ${d.salesCount} (${d.salesTotal.toFixed(2)} $) · Contacts ${d.contacts.length} · Chats ${d.chats} · Erreurs ${d.errors}` +
+  const short = `${status}\nVisiteurs ${d.guests.unique} (${d.guests.fresh} nouveaux) · Pages ${d.visits} · Clics ${d.clicks} · Ventes ${d.salesCount} (${d.salesTotal.toFixed(2)} $) · Contacts ${d.contacts.length} · Chats ${d.chats} · Erreurs ${d.errors}` +
     (problems.length ? '\n⚠️ ' + problems.join(' ; ') : '');
 
   const html = `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:640px;margin:auto;color:#2b2118">
@@ -128,6 +135,7 @@ async function build() {
     ${problems.length ? `<p style="color:#b3372a;font-weight:700;margin:0 0 6px">À surveiller :</p>${list(problems.map(esc))}` : ''}
     <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:14px">
       ${row('Visites (24 h)', `${d.visits}${trend != null ? ` <span style="color:${trend >= 0 ? '#1e7a4c' : '#b3372a'}">(${trend >= 0 ? '+' : ''}${trend} %)</span>` : ''}`)}
+      ${row('Visiteurs uniques', `${d.guests.unique} — ${d.guests.fresh} nouveaux, ${d.guests.returning} revenus (${d.guests.sessions} visites)`)}
       ${row('Clics vers les boutiques', d.clicks)}
       ${row('Ventes', `${d.salesCount} — ${d.salesTotal.toFixed(2)} $${d.refunds ? ` · ${d.refunds} remboursement(s)` : ''}`)}
       ${row('Messages de contact', d.contacts.length)}

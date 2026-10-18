@@ -183,8 +183,20 @@ function register(app, { requireLogin, siteUrl }) {
         (SELECT COUNT(*) FROM chat_messages WHERE visitor_id = v.id AND role = 'user') questions
       FROM visitors v ORDER BY v.last_seen DESC LIMIT 300`).all()
       .map((v) => ({ ...v, purchased: hasPurchased(v.email) }));
+    const tracker = require('./tracker');
+    const filter = ['chat', 'returning', 'account', 'today'].includes(req.query.f) ? req.query.f : '';
+    const q = String(req.query.q || '').trim().slice(0, 80);
     res.render('admin/visiteurs', { page: 'admin', visitors, settings: settings(), pendingCount: candidates().length,
-      lastRun: dbm.getSetting('relance_last_run'), saved: req.query.saved === '1', msg: req.query.msg || '' });
+      lastRun: dbm.getSetting('relance_last_run'), saved: req.query.saved === '1', msg: req.query.msg || '',
+      guestStats: tracker.stats(), guests: tracker.list({ q, filter }), filter, q });
+  });
+
+  // Fiche complète d'un visiteur (anonyme ou connecté) : sessions, parcours, conversations, clics.
+  app.get('/admin/profil/:vid', requireLogin, (req, res) => {
+    const vid = String(req.params.vid || '').toLowerCase();
+    const p = /^[a-f0-9]{24}$/.test(vid) ? require('./tracker').profile(vid) : null;
+    if (!p) return res.status(404).render('404', { page: '' });
+    res.render('admin/profil', { page: 'admin', p });
   });
 
   app.post('/admin/visiteurs/settings', requireLogin, (req, res) => {

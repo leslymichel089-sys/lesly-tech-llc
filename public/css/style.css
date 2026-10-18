@@ -600,3 +600,19 @@ body.drop-ready::after { content: "Dépose tes fichiers pour les publier"; posit
 .model-row.ok .model-pill { border-color: #1e7a4c; color: #1e7a4c; }
 .model-row.ko .model-pill { opacity: .6; cursor: default; }
 #ai-test-result { white-space: pre-line; }
+.chat-sep { text-align: center; font-size: .72rem; color: var(--muted); margin: 4px 0; }
+
+/* Historique d'un visiteur */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.timeline li { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: start; }
+.timeline .tl-time { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; color: var(--muted); padding-top: 2px; }
+.timeline .chat-msg { max-width: 100%; }
+.timeline .tl-click { color: #1e7a4c; font-weight: 700; }
+
+/* Bandeau d'information (cookie d'identification) */
+.site-notice { position: fixed; left: 50%; transform: translateX(-50%); bottom: 84px; z-index: 92; width: min(560px, calc(100vw - 24px));
+  display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .22); font-size: .85rem; }
+.site-notice[hidden] { display: none; }
+.site-notice p { margin: 0; flex: 1; line-height: 1.45; }
+@media (max-width: 640px) { .site-notice { bottom: 76px; flex-direction: column; align-items: stretch; } }

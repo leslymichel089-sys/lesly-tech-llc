@@ -109,6 +109,14 @@ function attachments(files) {
 }
 
 function register(app, { contactEmail, publisherEmail, requireLogin }) {
+  // Historique de la bulle pour un visiteur qui revient (30 derniers messages, 30 jours).
+  app.get('/api/chat/history', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!req.vid) return res.json({ messages: [] });
+    const rows = dbm.db.prepare("SELECT role, content FROM chat_messages WHERE vid = ? AND at > datetime('now', '-30 day') ORDER BY id DESC LIMIT 30").all(req.vid).reverse();
+    res.json({ messages: rows.map((m) => [m.role === 'user' ? 'user' : 'bot', m.content.replace(/📎 \[([^\]]*)\]\([^)]*\)/g, '📎 $1')]) });
+  });
+
   app.get('/admin/chat-files/:name', requireLogin, (req, res) => {
     const name = path.basename(req.params.name);
     const file = path.join(CHAT_DIR, name);
@@ -140,11 +148,16 @@ function register(app, { contactEmail, publisherEmail, requireLogin }) {
 
     if (!req.session.chatConv) req.session.chatConv = crypto.randomBytes(8).toString('hex');
     const conv = req.session.chatConv;
-    const history = dbm.db.prepare('SELECT role, content FROM chat_messages WHERE conv = ? ORDER BY id DESC LIMIT 10').all(conv).reverse()
+    // Mémoire de l'assistant : les derniers échanges de CE visiteur, toutes visites confondues (30 jours),
+    // sinon ceux de la conversation en cours.
+    const history = (req.vid
+      ? dbm.db.prepare("SELECT role, content FROM chat_messages WHERE vid = ? AND at > datetime('now', '-30 day') ORDER BY id DESC LIMIT 12").all(req.vid)
+      : dbm.db.prepare('SELECT role, content FROM chat_messages WHERE conv = ? ORDER BY id DESC LIMIT 10').all(conv)).reverse()
       .map((m) => ({ role: m.role, content: m.content.replace(/\n📎 \[[^\]]*\]\([^)]*\)/g, ' (fichier joint)') }));
     const att = attachments(files);
     const vid = req.session.visitorId || null;
-    const ins = dbm.db.prepare('INSERT INTO chat_messages (conv, role, content, lang, ip, provider, visitor_id) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const ins0 = dbm.db.prepare('INSERT INTO chat_messages (conv, role, content, lang, ip, provider, visitor_id, vid, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const ins = { run: (c, role, content, l, i, provider, v) => ins0.run(c, role, content, l, i, provider, v, req.vid || null, req.guestSessionId || null) };
     ins.run(conv, 'user', (message || '(fichier joint)') + att.trace, lang, ip, '', vid);
 
     try {
@@ -174,7 +187,7 @@ function register(app, { contactEmail, publisherEmail, requireLogin }) {
 }
 
 function conversations(limit = 40) {
-  const convs = dbm.db.prepare('SELECT conv, MIN(at) started, MAX(at) last, COUNT(*) n, MAX(lang) lang FROM chat_messages GROUP BY conv ORDER BY MAX(id) DESC LIMIT ?').all(limit);
+  const convs = dbm.db.prepare('SELECT conv, MIN(at) started, MAX(at) last, COUNT(*) n, MAX(lang) lang, MAX(vid) vid FROM chat_messages GROUP BY conv ORDER BY MAX(id) DESC LIMIT ?').all(limit);
   const msgs = dbm.db.prepare('SELECT role, content, provider, at FROM chat_messages WHERE conv = ? ORDER BY id');
   return convs.map((c) => ({ ...c, messages: msgs.all(c.conv) }));
 }

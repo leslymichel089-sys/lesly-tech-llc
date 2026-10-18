@@ -169,6 +169,10 @@
     {
       "h": "Google sign-in and e-mails",
       "p": "Signing in with Google is optional: the whole site stays accessible without an account. If you sign in, we only receive your Google name, e-mail address and profile photo. We then link the pages you view, your clicks to the stores and your questions to the assistant to your account, in order to offer relevant recommendations. We only send you e-mails (news, tips, reminders) if you ticked the consent box; every e-mail includes a one-click unsubscribe link. You can ask us to delete your data at any time via the Contact page."
+    },
+    {
+      "h": "Visitor identification and history",
+      "p": "From your first visit, the site sets its own technical cookie (\"ltl_vid\", valid for 1 year) containing a random identifier, without your name. It is used to recognize your device on later visits and to keep a history of your visits (pages viewed, date, referrer, device type, approximate country and IP address) and of your chats with the assistant, so we can advise you consistently from one visit to the next and keep the site secure. This data is neither sold nor shared for advertising. Profiles inactive for 13 months are deleted automatically. You can clear this cookie in your browser at any time, or ask us to delete your history via the Contact page."
     }
   ],
   "privacy_title": "Privacy policy",
@@ -321,5 +325,8 @@
   "auth_anonymous": "Continue without an account",
   "auth_hello": "Hi",
   "auth_error": "Sign-in failed. Try again or continue without an account.",
-  "auth_privacy": "We only receive your Google name, e-mail and photo. See our privacy policy."
+  "auth_privacy": "We only receive your Google name, e-mail and photo. See our privacy policy.",
+  "notice_text": "This site uses a cookie to recognize your device and keep a history of your visits and your chats with the assistant, so we can help you better.",
+  "notice_more": "Learn more",
+  "notice_ok": "OK, got it"
 }

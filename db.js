@@ -131,6 +131,48 @@ for (const t of ['visits', 'clicks', 'chat_messages']) {
   }
 }
 
+// Identification de TOUS les visiteurs (même anonymes) : un identifiant par appareil (cookie
+// ltl_vid, 1 an) et des sessions de visite (nouvelle session après 30 min d'inactivité).
+db.exec(`
+CREATE TABLE IF NOT EXISTS guests (
+  vid TEXT PRIMARY KEY,                  -- identifiant aléatoire stocké dans le cookie ltl_vid
+  first_seen TEXT DEFAULT (datetime('now')),
+  last_seen TEXT DEFAULT (datetime('now')),
+  sessions INTEGER DEFAULT 0,
+  pages INTEGER DEFAULT 0,
+  first_referrer TEXT DEFAULT '',
+  first_page TEXT DEFAULT '',
+  device TEXT DEFAULT '',                -- mobile | tablette | ordinateur
+  browser TEXT DEFAULT '',
+  os TEXT DEFAULT '',
+  country TEXT DEFAULT '',
+  lang TEXT DEFAULT '',
+  last_ip TEXT DEFAULT '',
+  visitor_id INTEGER DEFAULT NULL        -- compte Google rattaché (table visitors), s'il se connecte
+);
+CREATE INDEX IF NOT EXISTS idx_guests_last ON guests (last_seen);
+CREATE TABLE IF NOT EXISTS guest_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vid TEXT NOT NULL,
+  started_at TEXT DEFAULT (datetime('now')),
+  last_at TEXT DEFAULT (datetime('now')),
+  pages INTEGER DEFAULT 0,
+  landing TEXT DEFAULT '',
+  referrer TEXT DEFAULT '',
+  ip TEXT DEFAULT '',
+  user_agent TEXT DEFAULT '',
+  country TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_gsess_vid ON guest_sessions (vid, id);
+`);
+for (const t of ['visits', 'clicks', 'chat_messages']) {
+  const cols = db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  if (!cols.includes('vid')) db.exec(`ALTER TABLE ${t} ADD COLUMN vid TEXT DEFAULT NULL`);
+  if (!cols.includes('session_id')) db.exec(`ALTER TABLE ${t} ADD COLUMN session_id INTEGER DEFAULT NULL`);
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_visits_vid ON visits (vid, id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_chat_vid ON chat_messages (vid, id)');
+
 // Migration : colonne « media » (vidéo hébergée sur le site, ex. /videos/x.mp4 ou /uploads/x.mp4).
 if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'media')) {
   db.exec("ALTER TABLE products ADD COLUMN media TEXT DEFAULT ''");
@@ -470,14 +512,15 @@ const qActive = db.prepare("SELECT * FROM products WHERE active = 1 ORDER BY id"
 const qById = db.prepare('SELECT * FROM products WHERE id = ?');
 const qByType = db.prepare('SELECT * FROM products WHERE type = ? AND active = 1 ORDER BY id');
 
-function logVisit(path, visitorId = null) {
+// t : { vid, sessionId } — traceur du visiteur (tracker.js), facultatif.
+function logVisit(path, visitorId = null, t = {}) {
   const day = new Date().toISOString().slice(0, 10);
-  db.prepare('INSERT INTO visits (day, path, visitor_id) VALUES (?, ?, ?)').run(day, path, visitorId);
+  db.prepare('INSERT INTO visits (day, path, visitor_id, vid, session_id) VALUES (?, ?, ?, ?, ?)').run(day, path, visitorId, t.vid || null, t.sessionId || null);
   db.prepare("INSERT INTO events (kind, label) VALUES ('visit', ?)").run(path);
   db.prepare('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT 500)').run();
 }
-function logClick(productId, label, url, visitorId = null) {
-  db.prepare('INSERT INTO clicks (product_id, label, url, visitor_id) VALUES (?, ?, ?, ?)').run(productId, label, url, visitorId);
+function logClick(productId, label, url, visitorId = null, t = {}) {
+  db.prepare('INSERT INTO clicks (product_id, label, url, visitor_id, vid, session_id) VALUES (?, ?, ?, ?, ?, ?)').run(productId, label, url, visitorId, t.vid || null, t.sessionId || null);
   const p = qById.get(productId);
   db.prepare("INSERT INTO events (kind, label) VALUES ('click', ?)").run(`${p ? p.title : '#' + productId} → ${label}`);
   db.prepare('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT 500)').run();

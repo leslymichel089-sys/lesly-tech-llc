@@ -2,7 +2,7 @@
 
 <section class="page-head">
   <span class="eyebrow">Admin</span>
-  <h1>Visiteurs connectés & relances</h1>
+  <h1>Visiteurs, historique & relances</h1>
   <p class="muted">Les visiteurs peuvent se connecter avec Google (facultatif — le site reste libre d'accès sans compte).
     Leurs pages vues, clics et questions à l'assistant sont rattachés à leur compte. Les relances par e-mail ne partent
     <strong>qu'aux visiteurs qui l'ont accepté</strong>, avec un lien de désinscription.</p>
@@ -17,6 +17,52 @@
 
 <% if (saved) { %><p class="alert alert-ok">Réglages enregistrés.</p><% } %>
 <% if (msg) { %><p class="alert alert-ok"><%= msg %></p><% } %>
+
+<section class="dash-panel">
+  <h2>Tous les visiteurs (anonymes et connectés)</h2>
+  <p class="muted small">Chaque appareil reçoit un identifiant à sa première visite (cookie ltl_vid, 1 an). Les robots sont ignorés.
+    Profils supprimés automatiquement après 13 mois d'inactivité.</p>
+  <div class="stats-grid" style="margin-bottom:16px">
+    <div class="stat"><span class="stat-num"><%= guestStats.today %></span><span class="stat-label">visiteurs 24 h</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.newToday %></span><span class="stat-label">nouveaux 24 h</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.week %></span><span class="stat-label">visiteurs 7 jours</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.month %></span><span class="stat-label">visiteurs 30 jours</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.returning %></span><span class="stat-label">revenus plusieurs fois</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.withChat %></span><span class="stat-label">ont parlé à l'assistant</span></div>
+    <div class="stat"><span class="stat-num"><%= guestStats.total %></span><span class="stat-label">profils au total</span></div>
+  </div>
+  <form method="get" action="/admin/visiteurs" class="catalogue-search" style="max-width:none;flex-wrap:wrap">
+    <input type="search" name="q" value="<%= q %>" placeholder="Rechercher : V-3F9A2C, pays (US), provenance, e-mail…">
+    <select name="f" style="max-width:220px">
+      <option value="" <%= !filter ? 'selected' : '' %>>Tous</option>
+      <option value="today" <%= filter === 'today' ? 'selected' : '' %>>Vus ces dernières 24 h</option>
+      <option value="returning" <%= filter === 'returning' ? 'selected' : '' %>>Revenus plusieurs fois</option>
+      <option value="chat" <%= filter === 'chat' ? 'selected' : '' %>>Ont parlé à l'assistant</option>
+      <option value="account" <%= filter === 'account' ? 'selected' : '' %>>Connectés avec Google</option>
+    </select>
+    <button class="btn btn-small" type="submit">Filtrer</button>
+  </form>
+  <% if (!guests.length) { %><p class="muted">Aucun visiteur pour ce filtre.</p><% } else { %>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Visiteur</th><th>Première visite</th><th>Dernière visite (UTC)</th><th>Visites</th><th>Pages</th><th>Questions</th><th>Clics</th><th>Appareil</th><th>Provenance</th><th></th></tr></thead>
+        <tbody>
+          <% guests.forEach(function (g) { %>
+            <tr>
+              <td><strong class="nowrap"><%= g.short %></strong><% if (g.account_name) { %><br><span class="small">👤 <%= g.account_name %></span><% } %><% if (g.country) { %> <span class="tag"><%= g.country %></span><% } %></td>
+              <td class="small nowrap"><%= g.first_seen %></td>
+              <td class="small nowrap"><%= g.last_seen %></td>
+              <td><%= g.sessions %></td><td><%= g.pages %></td><td><%= g.questions %></td><td><%= g.clicks %></td>
+              <td class="small"><%= g.device %> · <%= g.browser %> · <%= g.os %></td>
+              <td class="small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= g.first_referrer ? g.first_referrer.replace(/^https?:\/\//, '') : 'accès direct' %></td>
+              <td><a class="btn btn-small btn-ghost" href="/admin/profil/<%= g.vid %>">Historique</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
 
 <section class="dash-panel">
   <h2>Réglages</h2>

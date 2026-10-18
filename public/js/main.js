@@ -249,7 +249,22 @@
       var g = log.querySelector('.chat-msg.bot');
       if (g && !g.querySelector('.chat-text')) { var t = g.textContent; g.textContent = ''; log.removeChild(g); add('bot', t, false); }
     })();
-    try { JSON.parse(sessionStorage.getItem(STORE) || '[]').forEach(function (m) { add(m[0], m[1], false); }); } catch (e) {}
+    var restored = [];
+    try { restored = JSON.parse(sessionStorage.getItem(STORE) || '[]'); } catch (e) {}
+    if (restored.length) {
+      restored.forEach(function (m) { add(m[0], m[1], false); });
+    } else {
+      // Visiteur qui revient (nouvel onglet ou nouvelle visite) : on réaffiche ses échanges précédents.
+      fetch('/api/chat/history', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        var msgs = (d && d.messages) || [];
+        if (!msgs.length) return;
+        var sep = document.createElement('div');
+        sep.className = 'chat-sep';
+        sep.textContent = '— ' + (document.documentElement.lang === 'en' ? 'Earlier' : document.documentElement.lang === 'ht' ? 'Anvan' : document.documentElement.lang === 'es' ? 'Antes' : 'Échanges précédents') + ' —';
+        log.appendChild(sep);
+        msgs.forEach(function (m) { add(m[0], m[1], true); });
+      }).catch(function () {});
+    }
 
     function setOpen(open) {
       panel.hidden = !open;
@@ -388,6 +403,18 @@
         .then(function () { try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {} location.reload(); });
     });
   });
+
+  // --- Bandeau d'information (cookie d'identification) : affiché une seule fois ---
+  var notice = document.getElementById('site-notice');
+  if (notice) {
+    var seen = null;
+    try { seen = localStorage.getItem('ltl-notice'); } catch (e) {}
+    if (!seen) notice.hidden = false;
+    document.getElementById('site-notice-ok').addEventListener('click', function () {
+      notice.hidden = true;
+      try { localStorage.setItem('ltl-notice', '1'); } catch (e) {}
+    });
+  }
 
   // --- Apparition au scroll ---
   var revealEls = document.querySelectorAll('.reveal');

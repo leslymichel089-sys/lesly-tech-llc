@@ -169,6 +169,10 @@
     {
       "h": "Inicio de sesión con Google y correos",
       "p": "Iniciar sesión con Google es opcional: todo el sitio sigue accesible sin cuenta. Si inicias sesión, solo recibimos tu nombre, tu correo y tu foto de perfil de Google. Asociamos a tu cuenta las páginas que visitas, tus clics hacia las tiendas y tus preguntas al asistente para ofrecerte recomendaciones adecuadas. Solo te enviamos correos (novedades, consejos, recordatorios) si marcaste la casilla de consentimiento; cada correo incluye un enlace para darte de baja con un clic. Puedes pedir la eliminación de tus datos en cualquier momento desde la página de Contacto."
+    },
+    {
+      "h": "Identificación de visitantes e historial",
+      "p": "Desde tu primera visita, el sitio guarda su propia cookie técnica («ltl_vid», válida 1 año) con un identificador aleatorio, sin tu nombre. Sirve para reconocer tu dispositivo en visitas posteriores y conservar el historial de tus visitas (páginas vistas, fecha, procedencia, tipo de dispositivo, país aproximado y dirección IP) y de tus conversaciones con el asistente, para aconsejarte de forma coherente de una visita a otra y garantizar la seguridad del sitio. Estos datos no se venden ni se comparten con fines publicitarios. Los perfiles inactivos durante 13 meses se eliminan automáticamente. Puedes borrar esta cookie en tu navegador en cualquier momento o pedir la eliminación de tu historial desde la página de Contacto."
     }
   ],
   "privacy_title": "Política de privacidad",
@@ -321,5 +325,8 @@
   "auth_anonymous": "Continuar sin cuenta",
   "auth_hello": "Hola",
   "auth_error": "No se pudo iniciar sesión. Inténtalo de nuevo o continúa sin cuenta.",
-  "auth_privacy": "Solo recibimos tu nombre, correo y foto de Google. Ver la política de privacidad."
+  "auth_privacy": "Solo recibimos tu nombre, correo y foto de Google. Ver la política de privacidad.",
+  "notice_text": "Este sitio usa una cookie para reconocer tu dispositivo y guardar el historial de tus visitas y conversaciones con el asistente, para ayudarte mejor.",
+  "notice_more": "Más información",
+  "notice_ok": "Entendido"
 }

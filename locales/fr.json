@@ -169,6 +169,10 @@
     {
       "h": "Connexion Google et e-mails",
       "p": "La connexion avec Google est facultative : le site reste entièrement accessible sans compte. Si tu te connectes, nous recevons uniquement ton nom, ton adresse e-mail et ta photo de profil Google. Nous associons alors à ton compte les pages consultées, les clics vers les boutiques et tes questions à l'assistant, afin de te proposer des recommandations adaptées. Nous ne t'envoyons d'e-mails (nouveautés, conseils, rappels) que si tu as coché la case d'accord ; chaque e-mail contient un lien pour te désinscrire en un clic. Tu peux demander la suppression de tes données à tout moment via la page Contact."
+    },
+    {
+      "h": "Identification des visiteurs et historique",
+      "p": "Dès ta première visite, le site dépose un cookie technique propre (« ltl_vid », valable 1 an) contenant un identifiant aléatoire, sans ton nom. Il sert à reconnaître ton appareil lors de tes visites suivantes et à conserver l'historique de tes visites (pages consultées, date, provenance, type d'appareil, pays approximatif et adresse IP) ainsi que de tes échanges avec l'assistant, afin de te conseiller de manière cohérente d'une visite à l'autre et d'assurer la sécurité du site. Ces données ne sont ni vendues ni partagées à des fins publicitaires. Les profils inactifs depuis 13 mois sont supprimés automatiquement. Tu peux effacer ce cookie dans ton navigateur à tout moment, ou demander la suppression de ton historique via la page Contact."
     }
   ],
   "privacy_title": "Politique de confidentialité",
@@ -328,5 +332,8 @@
   "auth_anonymous": "Continuer sans compte",
   "auth_hello": "Bonjour",
   "auth_error": "Connexion impossible. Réessaie ou continue sans compte.",
-  "auth_privacy": "Nous ne recevons que ton nom, ton e-mail et ta photo Google. Voir la politique de confidentialité."
+  "auth_privacy": "Nous ne recevons que ton nom, ton e-mail et ta photo Google. Voir la politique de confidentialité.",
+  "notice_text": "Ce site utilise un cookie pour reconnaître ton appareil et garder l'historique de tes visites et de tes échanges avec l'assistant, afin de mieux te conseiller.",
+  "notice_more": "En savoir plus",
+  "notice_ok": "OK, compris"
 }

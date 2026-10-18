@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <span class="eyebrow">Historique du visiteur</span>
+  <h1><%= p.short %><% if (p.account_name) { %> — 👤 <%= p.account_name %><% } %></h1>
+  <p class="muted">
+    Première visite : <strong><%= p.first_seen %></strong> UTC · Dernière : <strong><%= p.last_seen %></strong> UTC ·
+    <%= p.sessions %> visite(s) · <%= p.pages %> page(s) · <%= p.totalQuestions %> question(s) à l'assistant · <%= p.totalClicks %> clic(s) vers les boutiques
+  </p>
+  <p class="muted small">
+    Appareil : <%= p.device %> · <%= p.browser %> · <%= p.os %><% if (p.country) { %> · Pays : <%= p.country %><% } %><% if (p.lang) { %> · Langue du site : <%= p.lang %><% } %>
+    · Arrivé par : <%= p.first_referrer || 'accès direct' %> (page <%= p.first_page %>)
+    <% if (p.account_email) { %> · Compte : <a href="/admin/visiteurs/<%= p.account_id %>"><%= p.account_email %></a><% } %>
+  </p>
+  <div class="dash-actions">
+    <a class="btn btn-small btn-ghost" href="/admin/visiteurs">← Tous les visiteurs</a>
+  </div>
+</section>
+
+<% function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); } %>
+<% function msg(s) { return esc(s).replace(/📎 \[([^\]]+)\]\((\/admin\/chat-files\/[\w.]+)\)/g, '📎 <a href="$2">$1</a>').replace(/\n/g, '<br>'); } %>
+
+<% if (p.orphanChats.length) { %>
+  <section class="dash-panel">
+    <h2>Conversations (avant l'identification des sessions)</h2>
+    <div class="conv-log">
+      <% p.orphanChats.forEach(function (m) { %>
+        <div class="chat-msg <%= m.role === 'user' ? 'user' : 'bot' %>"><%- msg(m.content) %><br><span class="small" style="opacity:.6"><%= m.at %></span></div>
+      <% }) %>
+    </div>
+  </section>
+<% } %>
+
+<% p.sessionsList.forEach(function (s, i) { %>
+  <section class="dash-panel">
+    <h2>Visite n° <%= p.sessionsList.length - i %> — <%= s.started_at %> UTC</h2>
+    <p class="muted small"><%= s.pages %> page(s) · arrivée sur <%= s.landing %><% if (s.referrer) { %> depuis <%= s.referrer %><% } %><% if (s.country) { %> · <%= s.country %><% } %> · fin : <%= s.last_at %></p>
+    <ol class="timeline">
+      <% s.timeline.forEach(function (e) { %>
+        <li class="tl-<%= e.kind %>">
+          <span class="tl-time"><%= String(e.at).slice(11, 16) %></span>
+          <% if (e.kind === 'page') { %>📄 <a href="<%= e.text %>" target="_blank"><%= e.title || e.text %></a>
+          <% } else if (e.kind === 'click') { %>🛒 Clic : <%= e.text %>
+          <% } else if (e.kind === 'question') { %><div class="chat-msg user"><%- msg(e.text) %></div>
+          <% } else { %><div class="chat-msg bot"><%- msg(e.text) %><% if (e.provider) { %><br><span class="small" style="opacity:.6">via <%= e.provider %></span><% } %></div><% } %>
+        </li>
+      <% }) %>
+      <% if (!s.timeline.length) { %><li class="muted">—</li><% } %>
+    </ol>
+  </section>
+<% }) %>
+
+<%- include('../partials/footer') %>

@@ -91,6 +91,12 @@
 </div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <% } %>
+<% if (!String(currentPath).startsWith('/admin')) { %>
+<div class="site-notice" id="site-notice" role="region" aria-label="Information" hidden>
+  <p><%= t('notice_text') %> <a href="/confidentialite"><%= t('notice_more') %></a></p>
+  <button type="button" class="btn btn-small" id="site-notice-ok"><%= t('notice_ok') %></button>
+</div>
+<% } %>
 <script src="/js/main.js"></script>
 </body>
 </html>

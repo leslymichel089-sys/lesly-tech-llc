@@ -32,7 +32,8 @@
   <% convs.forEach(function (c) { %>
     <details class="conv">
       <summary><strong><%= c.messages[0] ? c.messages[0].content.slice(0, 90) : '…' %></strong>
-        <span class="muted small"> — <%= c.started %> UTC · <%= c.n %> message(s) · <%= c.lang %></span></summary>
+        <span class="muted small"> — <%= c.started %> UTC · <%= c.n %> message(s) · <%= c.lang %></span>
+        <% if (c.vid) { %> · <a href="/admin/profil/<%= c.vid %>" class="small">voir l'historique du visiteur V-<%= String(c.vid).slice(0, 6).toUpperCase() %></a><% } %></summary>
       <div class="conv-log">
         <% c.messages.forEach(function (m) { %>
           <% var safe = String(m.content).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

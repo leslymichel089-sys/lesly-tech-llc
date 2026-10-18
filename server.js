@@ -20,6 +20,7 @@ const monitor = require('./monitor');
 const report = require('./report');
 const assistant = require('./assistant');
 const accounts = require('./accounts');
+const tracker = require('./tracker');
 
 // Les couvertures sont versionnées en base64 (*.jpg.b64) car certains modes de
 // déploiement ne transportent pas le binaire. On les restaure en .jpg au démarrage.
@@ -202,6 +203,8 @@ app.use((req, res, next) => {
 
 // ---------- Comptes visiteurs (Google facultatif) + relances avec consentement ----------
 accounts.register(app, { requireLogin, siteUrl: SITE_URL });
+// Identification de chaque visiteur (cookie ltl_vid) + sessions de visite.
+tracker.register(app, { siteUrl: SITE_URL });
 
 // ---------- Page de maintenance (site désactivé ; l'admin reste accessible) ----------
 app.use((req, res, next) => {
@@ -225,8 +228,8 @@ ai.onEvent((ev) => {
 
 // ---------- Compteur de visites + pic de visites (watchdog) ----------
 app.use((req, res, next) => {
-  if (req.method === 'GET' && !req.path.startsWith('/admin') && !req.path.startsWith('/go')) {
-    dbm.logVisit(req.path, req.session.visitorId || null);
+  if (req.method === 'GET' && !req.isBot && !req.path.startsWith('/admin') && !req.path.startsWith('/go')) {
+    dbm.logVisit(req.path, req.session.visitorId || null, { vid: req.vid, sessionId: req.guestSessionId });
     watchdog.checkVisitsSpike().catch(() => {});
   }
   next();
@@ -280,7 +283,7 @@ app.get('/go/:id/:index', (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
   const link = p && p.links[parseInt(req.params.index, 10)];
   if (!p || !p.active || !link) return res.status(404).render('404', { page: '' });
-  dbm.logClick(p.id, link.label, link.url, req.session.visitorId || null);
+  dbm.logClick(p.id, link.label, link.url, req.session.visitorId || null, { vid: req.vid, sessionId: req.guestSessionId });
   res.redirect(302, link.url);
 });
 
