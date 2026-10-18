@@ -366,6 +366,46 @@ app.post('/publiez-votre-livre', (req, res) => {
   renderEdition(res, { status: 'sent' });
 });
 
+// ---------- Chapitre gratuit (capture nom + email) ----------
+// Bloc « Recevez gratuitement le chapitre 1 de Komanse Lavi Ou Ozetazini » (accueil + catalogue).
+// L'inscription part dans la table subscribers (source = chapitre-gratuit), visible dans
+// /admin/newsletter ; le lien de téléchargement s'affiche immédiatement après l'envoi.
+const GIFT_LINK = 'https://leseditionslevent.com/products/chapit-1-gratis-komanse-lavi-ou-ozetazini';
+const GIFT_IP_MAX = 3, GIFT_ALL_MAX = 30, GIFT_WINDOW = 3600 * 1000;
+const renderGiftPage = (req, res, from, gift, statusCode = 200) => {
+  if (from === 'catalogue') {
+    return res.status(statusCode).render('catalogue', {
+      page: 'catalogue', products: listProducts(req), filter: '', q: '', gift,
+    });
+  }
+  return res.status(statusCode).render('index', { page: 'home', products: listProducts(req), gift });
+};
+
+app.post('/chapitre-gratuit', (req, res) => {
+  const from = req.body.from === 'catalogue' ? 'catalogue' : 'home';
+  const form = {
+    name: String(req.body.name || '').trim().slice(0, 100),
+    email: String(req.body.email || '').trim().toLowerCase().slice(0, 200),
+  };
+  const gift = (status) => ({ status, name: form.name, email: form.email, link: GIFT_LINK });
+  // Un robot remplit le champ piège « website » : on fait semblant d'accepter, sans rien enregistrer.
+  if (String(req.body.website || '').trim()) return renderGiftPage(req, res, from, gift('ok'));
+
+  if (!form.name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    return renderGiftPage(req, res, from, gift('invalid'), 400);
+  }
+  const ip = req.ip || 'unknown';
+  if (dbm.rateCount('gift_ip', ip, GIFT_WINDOW) >= GIFT_IP_MAX
+    || dbm.rateCount('gift_all', '*', GIFT_WINDOW) >= GIFT_ALL_MAX) {
+    return renderGiftPage(req, res, from, gift('limited'), 429);
+  }
+  dbm.rateHit('gift_ip', ip);
+  dbm.rateHit('gift_all', '*');
+
+  const result = dbm.addSubscriber(form.email, form.name, 'chapitre-gratuit');
+  renderGiftPage(req, res, from, gift(result === 'existing' ? 'already' : 'ok'));
+});
+
 // ---------- Newsletter ----------
 app.post('/newsletter', (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -836,7 +876,9 @@ app.get('/admin/newsletter', requireLogin, (req, res) => {
 
 app.get('/admin/newsletter.csv', requireLogin, (req, res) => {
   const rows = dbm.listSubscribers();
-  const csv = 'email,created_at\n' + rows.map((r) => `${r.email},${r.created_at}`).join('\n');
+  const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const csv = 'email,name,source,created_at\n'
+    + rows.map((r) => [r.email, r.name || '', r.source || '', r.created_at].map(esc).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="newsletter-lesly-tech-llc.csv"');
   res.send('\ufeff' + csv);

@@ -389,5 +389,17 @@
   "edition_status_limited": "Twòp demann te voye nan ti tan. Tanpri reeseye nan yon è.",
   "edition_status_sent": "Mèsi ! Nou resevwa demann ou byen. Les Éditions LeVent ap reponn ou nan 48 è ouvrab.",
   "edition_title": "Pibliye liv ou ak Les Éditions LeVent",
-  "nav_edition": "Pibliye liv ou"
+  "nav_edition": "Pibliye liv ou",
+  "gift_eyebrow": "Kado byenveni",
+  "gift_title": "Resevwa chapit 1 « Komanse Lavi Ou Ozetazini » gratis",
+  "gift_text": "Gid pratik la, an kreyòl ayisyen, pou w byen kòmanse lavi w Ozetazini : papye, travay, lojman, lajan. Kite non w ak imèl ou, lyen pou w telechaje premye chapit la ap parèt touswit — san w pa peye anyen.",
+  "gift_form_name": "Non ou",
+  "gift_form_email": "Imèl ou",
+  "gift_form_submit": "Resevwa chapit gratis la",
+  "gift_form_note": "Zewo spam : sèlman nouvèl Edisyon LeVent. Ou ka dezabòne nenpòt ki lè.",
+  "gift_status_ok": "Mèsi ! Chapit gratis ou a pare, klike sou bouton an pou w telechaje l.",
+  "gift_status_already": "Ou deja enskri : men lyen chapit gratis ou a ankò.",
+  "gift_status_invalid": "Tanpri verifye non w ak adrès imèl ou, epi eseye ankò.",
+  "gift_status_limited": "Twòp tantativ nan ti tan. Tanpri eseye ankò nan inèdtan.",
+  "gift_download": "Telechaje chapit 1 gratis la"
 }

@@ -389,5 +389,17 @@
   "edition_status_limited": "Too many requests were sent in a short time. Please try again in an hour.",
   "edition_status_sent": "Thank you! Your request has been received. Les Éditions LeVent will reply within 2 business days.",
   "edition_title": "Publish your book with Les Éditions LeVent",
-  "nav_edition": "Publish your book"
+  "nav_edition": "Publish your book",
+  "gift_eyebrow": "Welcome gift",
+  "gift_title": "Get chapter 1 of “Komanse Lavi Ou Ozetazini” for free",
+  "gift_text": "The practical guide, in Haitian Creole, to start your life in the United States the right way: paperwork, work, housing, money. Enter your name and email and the download link for the first chapter appears right away — no payment needed.",
+  "gift_form_name": "Your name",
+  "gift_form_email": "Your email",
+  "gift_form_submit": "Get the free chapter",
+  "gift_form_note": "No spam: only news from Les Éditions LeVent. Unsubscribe at any time.",
+  "gift_status_ok": "Thank you! Your free chapter is ready — click the button to download it.",
+  "gift_status_already": "You are already subscribed: here is your free chapter link again.",
+  "gift_status_invalid": "Please check your name and email address, then try again.",
+  "gift_status_limited": "Too many attempts in a short time. Please try again in an hour.",
+  "gift_download": "Download free chapter 1"
 }

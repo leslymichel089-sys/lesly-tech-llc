@@ -232,6 +232,14 @@ if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'med
   db.exec("ALTER TABLE products ADD COLUMN media TEXT DEFAULT ''");
 }
 
+// Migration : colonnes « name » et « source » des abonnés (capture « chapitre gratuit » :
+// on garde le prénom/nom déclaré et la provenance de l'inscription, ex. chapitre-gratuit, newsletter).
+{
+  const subCols = db.prepare('PRAGMA table_info(subscribers)').all().map((c) => c.name);
+  if (!subCols.includes('name')) db.exec("ALTER TABLE subscribers ADD COLUMN name TEXT DEFAULT ''");
+  if (!subCols.includes('source')) db.exec("ALTER TABLE subscribers ADD COLUMN source TEXT DEFAULT ''");
+}
+
 const getSetting = (k, dflt = '') => {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
   return r ? r.value : dflt;
@@ -609,12 +617,16 @@ function logNotif(type, title, message, channels) {
     .run(type, `${title} — ${message}`.slice(0, 500), JSON.stringify(channels || []), 1);
 }
 
-const addSubscriber = (email) => {
+const addSubscriber = (email, name = '', source = '') => {
   try {
-    db.prepare('INSERT INTO subscribers (email) VALUES (?)').run(email);
-    return true;
+    db.prepare('INSERT INTO subscribers (email, name, source) VALUES (?, ?, ?)').run(email, name, source);
+    return 'new';
   } catch (e) {
-    return false; // déjà inscrit ou email invalide
+    // Déjà inscrit : on complète le nom s'il manquait (sans jamais écraser l'existant).
+    if (name) {
+      db.prepare("UPDATE subscribers SET name = ? WHERE email = ? AND (name IS NULL OR name = '')").run(name, email);
+    }
+    return 'existing';
   }
 };
 const listSubscribers = () => db.prepare('SELECT * FROM subscribers ORDER BY created_at DESC, id DESC').all();

@@ -15,10 +15,10 @@
   <% } else { %>
     <div class="table-wrap">
       <table class="admin-table">
-        <thead><tr><th>Email</th><th>Date</th></tr></thead>
+        <thead><tr><th>Email</th><th>Nom</th><th>Source</th><th>Date</th></tr></thead>
         <tbody>
           <% subscribers.forEach(function(s){ %>
-            <tr><td><%= s.email %></td><td class="muted small"><%= s.created_at %></td></tr>
+            <tr><td><%= s.email %></td><td><%= s.name || '—' %></td><td><%= s.source || '—' %></td><td class="muted small"><%= s.created_at %></td></tr>
           <% }) %>
         </tbody>
       </table>

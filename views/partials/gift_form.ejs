@@ -1,0 +1,30 @@
+<% var g = (typeof gift !== 'undefined' && gift) || {};
+   var gFrom = (typeof giftFrom !== 'undefined' && giftFrom) || 'home'; %>
+<section class="section gift reveal" id="chapitre-gratuit">
+  <span class="eyebrow"><%= t('gift_eyebrow') %></span>
+  <h2 class="sec-title"><%= t('gift_title') %></h2>
+  <p class="muted"><%= t('gift_text') %></p>
+  <% if (g.status === 'ok' || g.status === 'already') { %>
+    <p class="alert alert-ok" role="status"><%= t(g.status === 'already' ? 'gift_status_already' : 'gift_status_ok') %></p>
+    <p><a class="btn" href="<%= g.link %>" target="_blank" rel="noopener"><%= t('gift_download') %> →</a></p>
+  <% } else { %>
+    <% if (g.status === 'invalid') { %><p class="alert alert-error" role="alert"><%= t('gift_status_invalid') %></p><% } %>
+    <% if (g.status === 'limited') { %><p class="alert alert-error" role="alert"><%= t('gift_status_limited') %></p><% } %>
+    <form method="post" action="/chapitre-gratuit" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="from" value="<%= gFrom %>">
+      <%# Champ piège anti-robots : invisible pour les humains, laissé vide. %>
+      <div style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+        <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <div class="form-row">
+        <label><%= t('gift_form_name') %>
+          <input type="text" name="name" autocomplete="name" required maxlength="100" value="<%= g.name || '' %>"></label>
+        <label><%= t('gift_form_email') %>
+          <input type="email" name="email" autocomplete="email" required maxlength="200" value="<%= g.email || '' %>"></label>
+      </div>
+      <div><button class="btn" type="submit"><%= t('gift_form_submit') %></button></div>
+      <p class="muted small"><%= t('gift_form_note') %></p>
+    </form>
+  <% } %>
+</section>

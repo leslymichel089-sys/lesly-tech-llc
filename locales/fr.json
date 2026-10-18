@@ -396,5 +396,17 @@
   "edition_status_limited": "Trop de demandes ont été envoyées en peu de temps. Merci de réessayer dans une heure.",
   "edition_status_sent": "Merci ! Votre demande a bien été reçue. Les Éditions LeVent vous répondront sous 48 h ouvrées.",
   "edition_title": "Publiez votre livre avec Les Éditions LeVent",
-  "nav_edition": "Publiez votre livre"
+  "nav_edition": "Publiez votre livre",
+  "gift_eyebrow": "Cadeau de bienvenue",
+  "gift_title": "Recevez gratuitement le chapitre 1 de « Komanse Lavi Ou Ozetazini »",
+  "gift_text": "Le guide pratique, en créole haïtien, pour bien démarrer sa vie aux États-Unis : démarches, travail, logement, argent. Laissez votre nom et votre email, le lien de téléchargement du premier chapitre s’affiche immédiatement — sans aucun paiement.",
+  "gift_form_name": "Votre nom",
+  "gift_form_email": "Votre email",
+  "gift_form_submit": "Recevoir le chapitre gratuit",
+  "gift_form_note": "Zéro spam : seulement les nouveautés des Éditions LeVent. Désinscription possible à tout moment.",
+  "gift_status_ok": "Merci ! Votre chapitre gratuit est prêt, cliquez sur le bouton pour le télécharger.",
+  "gift_status_already": "Vous êtes déjà inscrit(e) : voici à nouveau le lien de votre chapitre gratuit.",
+  "gift_status_invalid": "Merci de vérifier votre nom et votre adresse email, puis de réessayer.",
+  "gift_status_limited": "Trop de tentatives en peu de temps. Merci de réessayer dans une heure.",
+  "gift_download": "Télécharger le chapitre 1 gratuit"
 }
