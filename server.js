@@ -195,7 +195,7 @@ app.use((req, res, next) => {
   res.locals.siteUrl = SITE_URL;
   res.locals.descFor = descFor;
   res.locals.isAdmin = !!req.session.admin;
-  res.locals.contactEmail = process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com';
+  res.locals.contactEmail = process.env.CONTACT_EMAIL || 'leslytechllc777@gmail.com';
   res.locals.publisherEmail = process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com';
   res.locals.currentPath = req.path;
   res.locals.chatEnabled = dbm.getSetting('chat_enabled') !== '0';
@@ -911,7 +911,7 @@ app.post('/admin/ventes/test', requireLogin, async (req, res) => {
 // ---------- Assistant IA des visiteurs ----------
 assistant.register(app, {
   requireLogin,
-  contactEmail: process.env.CONTACT_EMAIL || 'leslymichel089@gmail.com',
+  contactEmail: process.env.CONTACT_EMAIL || 'leslytechllc777@gmail.com',
   publisherEmail: process.env.PUBLISHER_EMAIL || 'leseditionslevent777@gmail.com',
 });
 app.get('/admin/conversations', requireLogin, (req, res) => {
