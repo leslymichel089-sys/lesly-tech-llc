@@ -1,0 +1,89 @@
+<%- include('partials/header') %>
+
+<section class="page-head">
+  <h1><%= t('svc_title') %></h1>
+  <p class="muted"><%= t('svc_intro') %></p>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_commit_title') %></h2>
+  <p style="white-space: pre-line"><%= t('svc_commit_text') %></p>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_cb_title') %></h2>
+  <p><%= t('svc_cb_desc') %></p>
+  <% var chatbots = [
+    { name: t('svc_cb1_name'), price: t('svc_cb1_price'), desc: t('svc_cb1_desc') },
+    { name: t('svc_cb2_name'), price: t('svc_cb2_price'), desc: t('svc_cb2_desc') },
+    { name: t('svc_cb3_name'), price: t('svc_cb3_price'), desc: t('svc_cb3_desc') }
+  ]; %>
+  <% chatbots.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_sites_title') %></h2>
+  <% var sites = [
+    { name: t('svc_site1_name'), price: t('svc_site1_price'), desc: t('svc_site1_desc') },
+    { name: t('svc_site2_name'), price: t('svc_site2_price'), desc: t('svc_site2_desc') },
+    { name: t('svc_site3_name'), price: t('svc_site3_price'), desc: t('svc_site3_desc') }
+  ]; %>
+  <% sites.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_others_title') %></h2>
+  <% var others = [
+    { name: t('svc_o1_name'), price: t('svc_o1_price'), desc: t('svc_o1_desc') },
+    { name: t('svc_o2_name'), price: t('svc_o2_price'), desc: t('svc_o2_desc') },
+    { name: t('svc_o3_name'), price: t('svc_o3_price'), desc: t('svc_o3_desc') },
+    { name: t('svc_o4_name'), price: t('svc_o4_price'), desc: t('svc_o4_desc') },
+    { name: t('svc_o5_name'), price: t('svc_o5_price'), desc: t('svc_o5_desc') },
+    { name: t('svc_o6_name'), price: t('svc_o6_price'), desc: t('svc_o6_desc') },
+    { name: t('svc_o7_name'), price: t('svc_o7_price'), desc: t('svc_o7_desc') },
+    { name: t('svc_o8_name'), price: t('svc_o8_price'), desc: t('svc_o8_desc') },
+    { name: t('svc_o9_name'), price: t('svc_o9_price'), desc: t('svc_o9_desc') },
+    { name: t('svc_o10_name'), price: t('svc_o10_price'), desc: t('svc_o10_desc') },
+    { name: t('svc_o11_name'), price: t('svc_o11_price'), desc: t('svc_o11_desc') }
+  ]; %>
+  <% others.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_maint_title') %></h2>
+  <% var maint = [
+    { name: t('svc_m1_name'), price: t('svc_m1_price'), desc: t('svc_m1_desc') },
+    { name: t('svc_m2_name'), price: t('svc_m2_price'), desc: t('svc_m2_desc') },
+    { name: t('svc_m3_name'), price: t('svc_m3_price'), desc: t('svc_m3_desc') }
+  ]; %>
+  <% maint.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+  <p class="muted"><%= t('svc_maint_note') %></p>
+</section>
+
+<section class="dash-panel">
+  <h2><%= t('svc_cta_title') %></h2>
+  <p><%= t('svc_cta_text') %></p>
+  <p><a class="btn" href="/contact"><%= t('svc_cta_btn') %></a></p>
+</section>
+
+<%- include('partials/footer') %>

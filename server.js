@@ -273,6 +273,8 @@ app.get('/ebooks', (req, res) => {
   res.render('ebooks', { page: 'ebooks', ebooks });
 });
 
+app.get('/services', (req, res) => res.render('services', { page: 'services' }));
+
 app.get('/produit/:id', (req, res) => {
   const p = dbm.rowToProduct(dbm.qById.get(req.params.id));
   if (!p || (!p.active && !req.session.admin)) return res.status(404).render('404', { page: '' });
