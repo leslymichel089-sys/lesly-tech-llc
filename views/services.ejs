@@ -42,6 +42,24 @@
 </section>
 
 <section class="dash-panel">
+  <h2><%= t('svc_mkt_title') %></h2>
+  <p><em><%= t('svc_mkt_slogan') %></em></p>
+  <p><%= t('svc_mkt_desc') %></p>
+  <% var marketing = [
+    { name: t('svc_mkt1_name'), price: t('svc_mkt1_price'), desc: t('svc_mkt1_desc') },
+    { name: t('svc_mkt2_name'), price: t('svc_mkt2_price'), desc: t('svc_mkt2_desc') },
+    { name: t('svc_mkt3_name'), price: t('svc_mkt3_price'), desc: t('svc_mkt3_desc') },
+    { name: t('svc_mkt4_name'), price: t('svc_mkt4_price'), desc: t('svc_mkt4_desc') }
+  ]; %>
+  <% marketing.forEach(function(p){ %>
+    <article>
+      <h3><%= p.name %> — <strong><%= p.price %></strong></h3>
+      <p><%= p.desc %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="dash-panel">
   <h2><%= t('svc_others_title') %></h2>
   <% var others = [
     { name: t('svc_o1_name'), price: t('svc_o1_price'), desc: t('svc_o1_desc') },
